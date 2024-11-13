@@ -22,14 +22,18 @@ import pandas as pd
 app = Flask(__name__)
 socket = SocketIO(app)
 
+#Reconnect timers for Battery, EM and other system
+reconnectTimer_Battery = 10
+reconnectTimer_EM = 10
+reconnectTimer_OtherSystem = 10
+
+# Connect to MongoDB
+
 db_VisblueService = "VisblueService"
 db_VisblusSiteLog = "VisblueLog"
 db_MypowergridTimer = 'ServicePageTimer'
 
-plc_connection_status = {}
 
-grid_connection_status = {}
-pv_connection_status = {}
 
 Time2Set = -1
 t1 = None
@@ -77,6 +81,8 @@ MypowerGridChk = 0
 oldData = {}
 
 
+
+
 def convertAlarmCode(Alarm_CODE):
     pos = []
     A = str(bin(Alarm_CODE)).replace("0b", "")
@@ -116,8 +122,10 @@ db_client = client["SiteErrorLog"]
 
 # reconnect variables.
 gridReconnectTimer = 5
-batteryReconnectTimer = 3
+reconnectTimer_Battery = 3
 PVReconnectTimer = 5
+
+
 
 
 class datahandler(Process):
@@ -128,10 +136,11 @@ class datahandler(Process):
         Process.__init__(self)
         self.plc_client = ModbusTcpClient(ip, port, )
         self.plc_ip = ip
-
         self.Kunde = Kunde
         self.battery_ReconnectCounter = 0
         self.battery_lastConnection = None
+
+
         self.battery_status = None
         self.battery_last_status = None
         self.battery_offline_counter = None
@@ -157,158 +166,39 @@ class datahandler(Process):
         self.lastCheckForNote = 0
         self.data_to_site = {
             "ProjektNr": KundeData["Projekt"],
-            "Kunde": self.Kunde,
-            "battery_connection": [""],
-            "battery_status": [""],
-            "battery_power": [""],
-            "battery_soc": [""],
-            "battery_temp": [""],
-            'battery_offline_counter': self.battery_offline_counter,
-            "battery_control": [""],
-            'status_timer': self.status_timer,
-            'grid_connection': [""],
-            'grid_status': [""],
-            'grid_power': [""],
-            'battery_alarm_detected': "",
-            'battery_notCharging': 0,
-            'pv_alarm_detected': "",
-            'grid_alarm_detected': "",
-            'system_offline_detected': "",
-            'pv_connection': [""],
-            'pv_status': [""],
-            'pv_power': [""],
-            'total_consumption': [""],
-            "tarifstyring_version": KundeData["TarifstyringVersion"],
-            "drift": "",
-            "sa": "",
+            "Kunde": self.Kunde,         
+            'battery_offline_counter': self.battery_offline_counter,      
+            'status_timer': self.status_timer,        
+            "tarifstyring_version": KundeData["TarifstyringVersion"],                        
             "lokation": KundeData["Lokation"],
             "google": KundeData["google"],
             "kunde_site": KundeData["Page"],
-            "deadline": KundeData["Deadline"],
-            'plan': {},
-            'note': {},
-            "prioritet": "",
-            "days_left" : "",
+            "deadline": KundeData["Deadline"],    
         }
-        self.offline_data_to_site = {
-            "ProjektNr": KundeData["Projekt"],
-            "Kunde": self.Kunde,
-            "battery_connection": [""],
-            "battery_status": [""],
-            "battery_power": [""],
-            "battery_soc": [""],
-            "battery_temp": [""],
-            'battery_offline_counter': self.battery_offline_counter,
-            'status_timer': self.status_timer,
-            'grid_connection': [""],
-            'grid_status': [""],
-            'grid_power': [""],
-            'pv_connection': [""],
-            'battery_alarm_detected': "",
-            'pv_alarm_detected': "",
-            'grid_alarm_detected': "",
-            'system_offline_detected': "",
-            'pv_status': [""],
-            'pv_power': [""],
-            'total_consumption': [""],
-            "tarifstyring_version": KundeData["TarifstyringVersion"],
-            "drift": "",
-            "sa": "",
-            "lokation": KundeData["Lokation"],
-            "google": KundeData["google"],
-            "kunde_site": KundeData["Page"],
-            "deadline": KundeData["Deadline"],
-            'plan': {},
-            'note': {},
-            "prioritet": "",
-            "days_left" : "",
-        }
+                            
 
-    def check_control(self):
-        # 0 = EM, 1 = Tarif, 2 = AUTO
-        control = ""
-        control_reg = self.plc_client.read_holding_registers(
-            30, 1, 1).registers
-        if control_reg == 0:
-            control = "EM control"
-        elif control_reg == 1:
-            control = 'Wendeware control'
-        else:
-            control = 'Auto'
-        self.data_to_site.update({'battery_control': control})
+    # Finder ud af hvilken styring batteriet er på.
+    def battery_control(self) ->  str:
+        self.battery_control = None
+        control_reg = self.plc_client.read_holding_registers(26, 1, 1).registers
+        if control_reg == 0:    
+            self.battery_control = "EM control"
+        elif control_reg == 1:     
+            self.battery_control = 'Wendeware control'
+        else:   
+            self.battery_control = 'Auto'                
+        self.data_to_site.update({'battery_control': self.control})
 
-    #def battery_insert_or_update_db_error(self):
-    #    from datetime import datetime
+    #def battery_insert_or_update_db_error(self):    
 
-
-    def battery_insert_or_update_db_error(self):
-        
-        """
+    def battery_insert_or_update_db_error(self):    
         global db_client
         col = db_client[self.Kunde]
-
-        # Definer 5-dages grnsen
-        five_days_ago = datetime.now() - timedelta(days=5)
-
-        # Slet dokumenter ldre end 5 dage baseret p 'time' eller 'time_lst'
-        col.delete_many({
-            "$or": [
-                {"time": {"$lt": five_days_ago.strftime("%d-%m-%Y %H:%M")}},
-                {"time_lst": {"$lt": five_days_ago.strftime("%d-%m-%Y %H:%M")}}
-            ]
-        })
-
         if self.BatteryAlarmData > 0:
-            localtime = datetime.today().strftime("%d-%m-%Y %H:%M")
-
-            # Find det nyeste dokument baseret p 'time' (fejl der allerede eksisterer)
-            latest_record = col.find_one({}, {'time': 1}, sort=[('time', -1)])
-
-            if latest_record and latest_record.get('time'):
-                self.data_to_site.update({"battery_alarm_detected": latest_record['time']})
-            else:
-                self.data_to_site.update({"battery_alarm_detected": ""})
-
-            # Opret ny post for batterifejl (uden opdatering af eksisterende)
-            new_entry = {
-                "Kunde": self.Kunde,
-                "ProjektNr": self.kunde_data['Projekt'],
-                "error": self.data_to_site['battery_status'],
-                "time": localtime,
-                "last_update": localtime
-            }
-
-            col.insert_one(new_entry)
-
-        else:
-            try:
-                # Hvis fejlen er lst, registrer tidspunktet for lsningen
-                localtime = datetime.today().strftime("%d-%m-%Y %H:%M")
-                solution_entry = {
-                    "Kunde": self.Kunde,
-                    "ProjektNr": self.kunde_data['Projekt'],
-                    "time_lst": localtime,  # Tidspunkt for, hvornr fejlen blev lst
-                    "last_update": localtime
-                }
-
-                col.insert_one(solution_entry)
-            except:
-                pass
-
-    
-        """    
-        global db_client
-        col = db_client[self.Kunde]
-
-        if self.BatteryAlarmData > 0:
-
-            localtime = datetime.today().strftime("%d-%m-%Y %H:%M")
-           # col = db_client[self.Kunde]
-
+            localtime = datetime.today().strftime("%d-%m-%Y %H:%M")          
             for i in col.find({}, {'time': 1}):
                 if i.get('time'):
-                    self.data_to_site.update(
-                        {"battery_alarm_detected": i['time']})
+                    self.data_to_site.update({"battery_alarm_detected": i['time']})
                     break
             else:
                 self.data_to_site.update({"battery_alarm_detected": ""})
@@ -356,134 +246,96 @@ class datahandler(Process):
                 pass
   
 
-    def battery_connect(self):
-        """
-        try:
-            # Start batteritimer
-            self.battery_chk_timer()
+    
+       
+    
 
-            # Kontrollr, om vi skal forsge en ny forbindelse baseret p rekonstruktionstller
-            if not self.battery_lastConnection and self.battery_ReconnectCounter == batteryReconnectTimer:
-                self.battery_lastConnection = True
+    def _battery_update_connection_status(self, status):
+        self.data_to_site['battery_connection_status'] = status
+        self.battery_lastConnection = status
 
-            # Hvis der allerede er forbindelse eller vi prver frste gang
-            if self.battery_lastConnection or self.battery_lastConnection is None:
-                try:
-                    # Kontroller om PLC-klienten stadig er aktiv
-                    if not self.plc_client.is_active():
-                        self.plc_client.connect()
+    
+    def _battery_reconnection_timer(self):
+        if self.battery_lastConnection == False and self.battery_ReconnectCounter >= reconnectTimer_Battery:
+            self.battery_lastConnection = True
+            reconnectTimer_Battery = 3
+        
 
-                    # Test forbindelse ved at lse registrer
-                    self.plc_client.read_holding_registers(0, 1, 1).registers
-                    self.data_to_site['battery_connection'] = True
-                    self.battery_lastConnection = True
-
-                except Exception as e:
-                    print(f"Bat_error - {self.Kunde}: {e}")
-                    # Luk klienten hvis der opstod en fejl og marker forbindelsen som tabt
-                    self.plc_client.close()
-                    self.data_to_site['battery_connection'] = False
-                    self.battery_lastConnection = False
-            else:
-                # Hvis der ikke er forbindelse, opdater forbindelsesstatus og g tlleren
-                self.data_to_site.update({'battery_connection': False})
-                self.battery_ReconnectCounter += 1
-
-        except Exception as e:
-            print(f"battery_connect error {self.Kunde}: {e}")
-
-    """     
-        global batteryReconnectTimer
-        try:
-            global reconnectTimer
-            self.battery_chk_timer()
-            if self.battery_lastConnection == False and self.battery_ReconnectCounter == batteryReconnectTimer:
-                self.battery_lastConnection = True
-            if self.battery_lastConnection or self.battery_lastConnection is None:
-                try:
-                    socket_open = self.plc_client.is_active()
-                    if not socket_open:
-                        self.plc_client.connect()
-
-                    self.plc_client.read_holding_registers(0, 1, 1).registers
-                    self.data_to_site['battery_connection'] = True                   
-                    self.battery_lastConnection = True
-                except Exception as e:
-                    print("Bat_error - ", self.Kunde, ": ", e)
-
-                    self.plc_client.close()
-                    self.data_to_site['battery_connection'] = False
-                    self.battery_lastConnection = False
-            else:
-                self.data_to_site.update({'battery_connection': False})
-                self.battery_ReconnectCounter += 1
-        except Exception as e:
-            print("battery_connect error ", self.Kunde, ": ", e)
+    def battery_check_connection(self):              
+        self._battery_reconnection_timer()        
+        if self.battery_lastConnection is None or self.battery_lastConnection is True:
+            try:                
+                if not self.plc_client.is_socket_open():
+                    self.plc_client.connect()                        
+                self.plc_client.read_holding_registers(0, 1, 1).registers
+                self._battery_update_connection_status(True)
+                self.plc_client.close()
+            except Exception as e:
+                print("Bat_error - ", self.Kunde, ": ", e)
+                self.plc_client.close()
+                self._battery_update_connection_status(False)   
+                
+        else:
+            self._battery_update_connection_status(False)   
+            self.battery_ReconnectCounter += 1
+    
 
     def battery_chk_timer(self):
         if self.battery_ReconnectCounter == reconnectTimer:
             self.battery_lastConnection = True
             self.battery_ReconnectCounter = 0
 
-    def battery_power_not_changing(self):
-        timer = 0
-
-        if self.battery_power_frozen is None and 0 < abs(self.battery_power) < 1000:
-            # Hvis self.battery_power_frozen ikke er sat, så sæt den til den nuværende tid
-            self.battery_power_frozen = time.time()
-            return
-
-        if self.battery_power_frozen is not None:
-            # Beregn tiden der er gået
-            timer = int(round(time.time() - self.battery_power_frozen))
-
-            # Tjek om timeren er indenfor et rimeligt interval, nulstil hvis for lang tid
-            if timer > 122132:  # Bruges kun pga time.time() laver en under stor tal når det startes forste gang.
-                timer = 0
-
-            # Hvis 480 minutter (8 timer) er gået, opdater data
-            if timer // 60 == 480:
-                self.data_to_site.update({'battery_notCharging': timer // 60})
-        else:
-            self.battery_power_frozen = None
-
-        """timer = 0
-        if self.battery_power_frozen == None and abs(self.battery_power) > 0 and abs(self.battery_power) < 1000:
-            if self.battery_power_frozen == None:
-                self.battery_power_frozen = time.time()
-                return
-            else:
-                timer = int(round(self.battery_power_frozen - time.time()))
-
-                if timer > 122132:
-                    timer = 0
-                if (timer/60) == 480:
-                    self.data_to_site.update(
-                        {'battery_notCharging': (timer/60)})
-        else:
-            self.battery_power_frozen = None"""
-
     def battery_read_data(self):
         try:
-            self.plcdata = self.plc_client.read_holding_registers(
-                0, 31, 1).registers
-            self.ChargeSetpointData = self.plcdata[24]
-            self.DischargeSetpointData = self.plcdata[25]
-            self.ActChargeSetpointData = self.plcdata[24]
-            self.ActDischargeSetpointData = self.plcdata[25]
-            self.SOCData = self.plcdata[15]
-            self.BatteryStateData = self.plcdata[0]
-            self.BatteryAlarmData = self.plcdata[1]
-            self.BatTempData = self.plcdata[5]
-            decoder = BinaryPayloadDecoder.fromRegisters(self.plc_client.read_holding_registers(
-                12, 3, 1).registers, byteorder=Endian.BIG, wordorder=Endian.LITTLE)
-            self.battery_power = sum(decoder.decode_16bit_int()
-                                     for _ in range(3))
-            self.data_to_site.update({'battery_power': self.battery_power, 'battery_soc': self.SOCData,
-                                     'battery_temp': self.BatTempData, 'battery_temp': self.BatTempData})
+            self.plcdata = self.plc_client.read_holding_registers(0, 31, 1).registers
         except Exception as e:
             print("battery_read_data error ", self.Kunde, ": ", e)
-        return True
+
+    def battery_ChargeSetpoint_value(self):
+            return self.plcdata[24]
+    def battery_DischargeSetpoint_value(self):
+            return self.plcdata[25]
+    def battery_ChargeSetpoint_actual_value(self):
+            return self.plcdata[22]
+    def battery_DischargeSetpoint_actual_value(self):
+            return self.plcdata[21]
+    def battery_state_value(self):
+            return self.plcdata[0]
+    def bettery_alarm_value(self):
+            return self.plcdata[1]
+    def battery_temperature_value(self):
+            return self.plcdata[5]
+    def battery_power_value(self):
+        decoder =  BinaryPayloadDecoder.fromRegisters(self.plc_client.read_holding_registers(12, 3, 1).registers, byteorder=Endian.BIG, wordorder=Endian.LITTLE)
+        return sum(decoder.decode_16bit_int() for _ in range(3))
+    
+     #     self.ChargeSetpointData = self.plcdata[24]
+     #     self.DischargeSetpointData = self.plcdata[25]
+     #     self.ActChargeSetpointData = self.plcdata[24]
+     #     self.ActDischargeSetpointData = self.plcdata[25]
+     #     self.SOCData = self.plcdata[15]
+     #     self.BatteryStateData = self.plcdata[0]
+     #     self.BatteryAlarmData = self.plcdata[1]
+     #     self.BatTempData = self.plcdata[5]
+     #     decoder = BinaryPayloadDecoder.fromRegisters(self.plc_client.read_holding_registers(
+     #         12, 3, 1).registers, byteorder=Endian.BIG, wordorder=Endian.LITTLE)
+     #     self.battery_power = sum(decoder.decode_16bit_int()
+     #                              for _ in range(3))
+     #     self.data_to_site.update({'battery_power': self.battery_power, 'battery_soc': self.SOCData,
+     #                              'battery_temp': self.BatTempData, 'battery_temp': self.BatTempData})
+     #
+     # return True
+
+    def battery_alarm_version(self):
+        alarm_registred = None
+        if self.kunde_data['SW'] == 1:
+            alarm_registred = convertAlarmCode
+        else:
+            alarm_registred = AlarmCodes.get(int(self.BatteryAlarmData))
+            if alarm_registred == None:
+                alarm_registred = "Unknown code"
+
+            
 
     def get_driftsikring_data(self, offline=False):  
         try:     
@@ -555,39 +407,12 @@ class datahandler(Process):
        # print("ALARM: ", self.data_to_site['battery_alarm_detected'])
         # self.insert_or_update_db_error(system="Battery")
 
-    def chkSetpoint(self):
-        local_time = datetime.today()
-        if local_time.minute < 5:
-            self.data_to_site['ActSetpoint'] = 'Waiting'
-            return
-        charge_diff = self.ActChargeSetpoint - self.BatPower
-        discharge_diff = self.ActDischargeSetpoint - abs(self.BatPower)
-        if 0 <= charge_diff <= 100:
-            self.data_to_site['ActSetpoint'] = 'OK'
-        elif 0 <= discharge_diff <= 100:
-            self.data_to_site['ActSetpoint'] = 'OK'
-        else:
-            self.data_to_site['ActSetpoint'] = 'Error'
-
     def system_offline(self):
-        self.offline_data_to_site.update(
-            {'battery_status': 'Offline', 'grid_status': '', 'pv_status': "", 'system_offline_detected': ""})
+        self.data_to_site.update({'battery_status': 'Offline', 'grid_status': '', 'pv_status': "", 'system_offline_detected': ""})
         socket.emit("table", self.offline_data_to_site)
 
-    def _decode_Uint16(self, regs):
-        return BinaryPayloadDecoder.fromRegisters(regs, byteorder=Endian.BIG, wordorder=Endian.BIG).decode_16bit_uint()
 
-    def _decode_int16(self, regs):
-        return BinaryPayloadDecoder.fromRegisters(regs, byteorder=Endian.BIG, wordorder=Endian.BIG).decode_16bit_int()
 
-    def _decode_int32(self, regs):
-        return BinaryPayloadDecoder.fromRegisters(regs, byteorder=Endian.BIG, wordorder=Endian.BIG).decode_32bit_int()
-
-    def _decode_Carlo(self, regs):
-        return BinaryPayloadDecoder.fromRegisters(regs, byteorder=Endian.BIG, wordorder=Endian.LITTLE).decode_32bit_int()
-
-    def _decode_float(self, regs):
-        return BinaryPayloadDecoder.fromRegisters(regs, byteorder=Endian.BIG, wordorder=Endian.BIG).decode_32bit_float()
 
     def insert_or_update_db_error(self, system):
         systemTimer = None
