@@ -121,13 +121,23 @@ def decode_float( regs):
 
 class MODBUS(object):
     def __init__(self, ip, port, unit_id):
+        
         self.IP = ip   
         self.PORT = port
         self.UNIT_ID = unit_id
-        self.client = ModbusTcpClient(self.IP, self.PORT);
+
+
+        try:
+            self.client = ModbusTcpClient(host=ip,port=port)
+        except Exception as e:
+            print(f"Error initializing Modbus client: {e}") 
+            raise
+        #self.client = ModbusTcpClient(self.IP, self.PORT)
+        
     
 
     def try_connect(self): 
+        
         try:
             if not self.client.is_socket_open():
                 self.client.connect()
@@ -155,7 +165,7 @@ class MODBUS(object):
         return decode_float(self.client.read_holding_registers(40095,2,self.UNIT_ID).registers)
     
 
-class EnergyMeter(MODBUS):
+class EnergyMeter_conn(MODBUS):
     def __init__(self, ip_address, port, unit_id, system_info):   
         super().__init__(ip_address, port, unit_id)
         self.system_info = system_info.lower()  
@@ -172,12 +182,12 @@ class EnergyMeter(MODBUS):
             self.power =self.carlo_ACPower()
         if self.system_info == 'server':
             self.power =self.server_ACPower()
-        print("EM:: ", self.power)
+        
         return self.power
    
 
   
-class PV(MODBUS):
+class PV_conn(MODBUS):
     def __init__(self,ip_address, port, unit_id, system_info):
         super().__init__(ip_address, port, unit_id)
         self.system_info = system_info.lower()
@@ -202,10 +212,10 @@ class PV(MODBUS):
         return self.power
 
 
-class Battery(MODBUS):
-    def __init__(self, ip_address, port, unit_id):
-        super().__init__(ip_address, port, unit_id)
-        self.IP = ip_address
+class Battery_conn(MODBUS):
+    def __init__(self, ip, port, unit_id):
+        super().__init__(ip,port,1)
+        self.IP = ip
         self.PORT = port
         self.UNIT_ID = unit_id
         self.start_time = datetime.now()
@@ -274,19 +284,19 @@ class Visblue_main():
         self.em_power = None
         self.pv_power = None
         self.bat_power = None
-
-        self.battery = Battery(bat_ip, 502, 1)
-        self.energymeter = EnergyMeter(em_ip, 502, 1, em_info)        
         
-        self.pv = PV(pv_ip, 502, 1, pv_info)
+        self.battery = Battery_conn(bat_ip, 502, 1)
+        self.energymeter = EnergyMeter_conn(em_ip, 502, 1, em_info)        
+        
+        self.pv = PV_conn(pv_ip, 502, 1, pv_info)
         self.data = {}
 
     def connect(self):
-        self.em_conn    = self.energymeter.try_connect()
-        self.pv_conn    = self.pv.try_connect()
+        #self.em_conn    = self.energymeter.try_connect()
+        #self.pv_conn    = self.pv.try_connect()
         self.bat_conn   = self.battery.try_connect()
-        self.data['Em_connection_status']       = self.em_conn
-        self.data['Pv_connection_status']       = self.pv_conn
+        #self.data['Em_connection_status']       = self.em_conn
+        #self.data['Pv_connection_status']       = self.pv_conn
         self.data['Battery_connection_status']  = self.bat_conn
 
     def gather_battery_data(self):
@@ -318,10 +328,10 @@ class Visblue_main():
     def driftsikring(self):
         from Driftsikring import driftsikring
         data = driftsikring(float(self.project_nr))
-        print(data.keys())
+        
         self.data = self.data | data 
 
-        print(self.data)
+        
         
 
     def update_database_error_log(self):        
@@ -351,31 +361,59 @@ class Visblue_main():
     def run(self):
        
         self.connect()   
-        self.driftsikring()
+        #self.driftsikring()
         return
         self.gather_battery_data()
         self.calculate_consumption()
 
 
-def background_threads():
-        
-   # site = 'Mollerup'
-   # em_ip = "172.20.33.195"
-   # pv_ip = "192.168.3.196"
-   # pv_info = 'Fronius_Eco'
-   # em_info = 'Carlo'
-   # bat_ip = "172.20.33.12"
+
+site = 'Mollerup'
+nr = 10202
+#em_ip = "127.1.10.5"
+#pv_ip = "192.168.3.196"
+#pv_info = 'Fronius_Eco'
+#em_info = 'Carlo'
+#bat_ip = "172.20.33.12"
+bat_ip = "127.1.5.8"
+
+site1    = 'Gelsted'
+nr1 = 10202
+#em_ip   = "172.20.32.56"
+#pv_ip   = "172.20.32.58"
+#bat_ip  = "172.20.32.54"
+bat_ip1 = "127.1.5.56"
 #
-#
-   # #site    = 'Gelsted'
-   # #em_ip   = "172.20.32.56"
-   # #pv_ip   = "172.20.32.58"
-   # #bat_ip  = "172.20.32.54"
-#
-   # site_1 = Visblue_main("Mollerup", 10680,  bat_ip, em_ip, pv_ip, pv_info, em_info)
-#
+#a = Visblue_main(site, 10203, "127.1.5.8",  "172.99.1.2","172.99.1.2", "Test", "test")  
+#a = Visblue_main(site, nr,bat_ip,"0","0", "0", "0")
+#a.connect()
+#a.run()
+
+
+
+
+datas = {'site' : ['Mollerup', 'Gelsted'],
+         'bat' : [bat_ip, bat_ip1],
+         'nr' : [nr, nr1]}
+        #site_1 = Visblue_main("Mollerup", 10680,  bat_ip, em_ip, pv_ip, pv_info, em_info)
+        #site.run()
+
+
    # site_1.run()
-    socket.emit('table', "site_1.data")
+def background_threads():
+    data = {}
+    for i in range(len(datas)):
+        if i == len(datas)-1:
+            break
+        site = datas['site'][i]
+      
+        bat_ip = datas['bat'][i]
+        sites = Visblue_main(site, datas['nr'][i], bat_ip, "172.99.1.2","172.99.1.2", "Test", "test")  
+        sites.run()
+        data[site] = sites.data
+
+    socket.emit('table', data)
+
 
 
 @socket.on("connect")
@@ -417,6 +455,7 @@ bat_ip = "172.20.33.12"
 site_1 = Visblue_main("Mollerup", 10680,  bat_ip, em_ip, pv_ip, pv_info, em_info)
 
 site_1.run()
-print(site_1.data)
+
+(site_1.data)
 
 """
