@@ -69,7 +69,7 @@ class MODBUS(object):
 
 
         try:
-            self.client = ModbusTcpClient(host=ip,port=port)
+            self.client = ModbusTcpClient(host=ip,port=port,timeout=1.5)
         except Exception as e:
             print(f"Error initializing Modbus client: {e}") 
             raise
@@ -186,7 +186,9 @@ class Battery_conn(MODBUS):
         return self.battery_data[15]
     
     def battery_read_alarm_state(self):
-        return convertAlarmCode(self.battery_data[1])
+        if self.battery_data[1] > 0:
+            return convertAlarmCode(self.battery_data[1])
+        return 'OK'
         #return self.battery_data[1]
 
     def battery_read_temperature(self):
@@ -195,8 +197,8 @@ class Battery_conn(MODBUS):
     def battery_read_control_reg(self):
         return self.battery_data[26]
     def battery_current_control(self):
-        control_modes = {0: 'Energymeter', 1: 'Wendeware', 2: 'Auto'} 
-        return control_modes.get(self.battery_data[26], 'Unknown')  
+        control_modes = {0: 'EM Control', 1: 'Smartflow', 2: 'Auto'} 
+        return control_modes.get(self.battery_data[26], 'Unknown control')  
     
     def battery_check_frozen(self):
         if self.battery_read_ACPower() > 1000 and self.battery_read_ACPower() > -100: 

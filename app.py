@@ -24,11 +24,18 @@ visblueDB = MongoClient('mongodb://172.20.33.151:27017/')
 
 
 class Visblue_main():
-    def __init__(self, site, project_nr,  bat_ip, em_ip, pv_ip, pv_info, em_info):
+    def __init__(self, site, project_nr,  bat_ip, em_ip, pv_ip, pv_info, em_info, smartflow):
         self.site = site
         self.project_nr = project_nr
+        self.smartflow = smartflow
+        self.pv_ip = pv_ip
+        self.em_ip = em_ip
+        self.bat_ip = bat_ip
+
         self.em_conn = None
+        self.em_data_missing = False
         self.pv_conn = None
+        self.pv_data_missing = False
         self.bat_conn = None
 
         self.em_power = None
@@ -36,19 +43,40 @@ class Visblue_main():
         self.bat_power = None
         
         self.battery = Battery_conn(bat_ip, 502, 1)
-        self.energymeter = EnergyMeter_conn(em_ip, 502, 1, em_info)        
-        
+        self.energymeter = EnergyMeter_conn(em_ip, 502, 1, em_info)                
         self.pv = PV_conn(pv_ip, 502, 1, pv_info)
+
+        self.smartflow = smartflow 
+
         self.data = {}
 
-    def connect(self):
-        #self.em_conn    = self.energymeter.try_connect()
-        #self.pv_conn    = self.pv.try_connect()
-        self.bat_conn    = self.battery.try_connect()
-        #self.data['Em_connection_status']       = self.em_conn
-        #self.data['Pv_connection_status']       = self.pv_conn
-        self.data['Battery_connection_status']  = self.bat_conn
 
+
+
+
+    def __chk_em_connection(self):
+        if self.em_ip is not None and self.em_conn != 'DCC':
+            self.em_conn    = self.energymeter.try_connect()
+        else:
+            self.em_conn = True
+
+    def __check_pv_connection(self):
+        if self.smartflow is not None:
+            if self.pv_ip is not None:
+                self.pv_conn    = self.pv.try_connect()
+            else:
+                self.pv_data_missing = True
+        else:
+            self.pv_conn = True
+
+
+    def connect(self):              
+        self.bat_conn    = self.battery.try_connect()
+        self.__chk_em_connection()
+        self.__check_pv_connection()
+
+        
+#
     def gather_battery_data(self):
         self.battery.battery_read_data()
         self.data['Project_nr'] = self.project_nr
@@ -56,7 +84,7 @@ class Visblue_main():
         self.data['Battery_Charge_Setpoint']                = self.battery.battery_read_charge_setpoint()
         self.data['Battery_Discharge_Setpoint']             = self.battery.battery_read_discharge_setpoint()
         self.data['Battery_State_of_Charge']                = self.battery.battery_read_soc()
-        self.data['Battery_Alarm_State']                    = self.battery.battery_read_alarm_state()
+        #self.data['Battery_Alarm_State']                    = self.battery.battery_read_alarm_state()
         self.data['Battery_Temperature']                    = self.battery.battery_read_temperature()
         self.data['Battery_frozen']                         = self.battery.battery_check_frozen()
         self.data['Battery_Setpoint_error']                 = self.battery.battery_check_setpoint()
@@ -68,14 +96,46 @@ class Visblue_main():
         self.data['Energymeter_ACPower']                    = self.em_power
         self.data['PV_ACPower']                             = self.pv_power
 
+
+    def check_for_systems_errors(self):
+        self.fontEnd_status_color = 'white'         
+        self.__check_battery_error()
+        self.__check_em_error()
+        self.__check_pv_error()
+        self.__check_MYP()
+        self.data["Battery_Alarm_Color"] = self.fontEnd_status_color
+
+    def __check_MYP(self):
+        if self.calculate_consumption() is not None:
+            if self.calculate_consumption() < 0:
+                if self.data['Battery_Alarm_State'] != "":
+                    self.data['Battery_Alarm_State'] += ',MYP_Cons_Error'
+                self.fontEnd_status_color = "red"
+        
+
+    def __check_pv_error(self):
+        if self.smartflow:
+            if not self.pv_conn:
+                if self.data['Battery_Alarm_State'] != "":
+                    self.data['Battery_Alarm_State'] += ", DetectNoPV"                    
+                self.fontEnd_status_color = "red"
+
+    def __check_em_error(self):
+        if not self.em_conn: 
+            if self.data['Battery_Alarm_State'] != "":
+                self.data['Battery_Alarm_State'] += ", DetectNoEM"
+            self.fontEnd_status_color = "red"
+
+    def __check_battery_error(self):
+        if self.battery.battery_read_alarm_state() != 'OK':
+            self.data['Battery_Alarm_State'] = self.battery.battery_read_alarm_state() 
+            self.fontEnd_status_color = "red"
        
     def calculate_consumption(self):
         consumption = None
         if self.em_conn and self.pv_conn :
-            consumption= self.em_power - self.pv_power + self.bat_power
-        else:
-            return        
-        self.data['Consumption'] = consumption
+            return self.em_power - self.pv_power + self.bat_power          
+        return consumption
         
     def driftsikring(self):
         from Driftsikring import driftsikring
@@ -96,7 +156,7 @@ class Visblue_main():
                 "Em_connection_status": self.em_conn,
                 "Pv_connection_status": self.pv_conn,
                 "battery_connection_status": self.bat_conn,
-                "battery_alarm_status": self.bat_alarm,                
+                "battery_alarm_status": self.battery.battery_read_alarm_state(),                
                 'ProjectNr':self.project_nr,
                 "Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             }        
@@ -112,6 +172,7 @@ class Visblue_main():
         self.connect()   
         self.gather_battery_data()
         self.driftsikring()
+        self.check_for_systems_errors()
         print(self.data)
         return
         self.gather_battery_data()
@@ -156,7 +217,7 @@ bat_ip = "172.20.33.12"
 def background_threads():
    #while True:
      
-        site = Visblue_main('col_name', 10280, bat_ip ,"0","0", "0", "0")
+        site = Visblue_main('col_name', 10280, bat_ip ,"0","0", "0", "0", None)
         site.run()
         
         

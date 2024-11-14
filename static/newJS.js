@@ -27,13 +27,16 @@ function add_reset_btn(key) {
 
 
 function add_note_area(key) {
-    noteBtn = document.createElement("input");
+    noteBtn = document.createElement("textarea");
     noteBtn.type = "text";            
     noteBtn.rows = 2;
-    noteBtn.cols = 500;
-    noteBtn.style.color = "black";
+    noteBtn.cols = 40;       
+    noteBtn.style.backgroundColor = "transparent";
     noteBtn.id = `input-${key}`;
     noteBtn.name = key
+    noteBtn.style.resize = "none";
+    noteBtn.textAlign = "center";
+
     noteBtn.onchange  = function() {
         save_plan(this.name, this.value);
     }
@@ -52,7 +55,7 @@ function add_data(msg) {
         console.log(key, msg[key]);
 
         // Create new cells
-      //  const key_td = document.createElement("td");
+        //const key_td = document.createElement("td");
         const site_td = document.createElement("td");
         const nr_td = document.createElement("td");
         const statud_td = document.createElement("td");
@@ -78,17 +81,20 @@ function add_data(msg) {
         newRow.classList.add("textClass")
         
         // Populate other cells with data
-        nr_td.textContent = msg[key]["Project_nr"] + " "  || "N/A";  // Set the key (A, B, C, D)
+        nr_td.innerHTML = msg[key]["Project_nr"] + "&nbsp; &nbsp;"  || "&nbsp; &nbsp; N/A";  // Set the key (A, B, C, D)
         nr_td.style.textAlign = "right";
-        site_td.textContent = key || "N/A";  // Assuming Site key exists in msg
+        site_td.innerHTML = "&nbsp;" + key   || "&nbsp; N/A ";  // Assuming Site key exists in msg
         site_td.style.textAlign = "left";
+        
+
         statud_td.textContent = msg[key]['Battery_Alarm_State'] || "OK";  // Set the status value
+        statud_td.style.color = msg[key]['Battery_Alarm_Color'] || 'white'
         //nr_td.textContent = msg[key]["Project_nr"] || "N/A";  // Set the TEST value
         power_td.textContent = msg[key]["Battery_ACPower"] || 0;  // Set the POWER value
         soc_td.textContent = msg[key]["Battery_State_of_Charge"] || 0;  // Set the SOC value
         control_td.textContent = msg[key]["Battery_control"] || 0;  // Set the SOC value
-        signed_td.textContent = msg[key]['Signed_date']  || "N/A" + "|" + msg[key]['Signed_time'] || "N/A";        
-        DASA_td.textContent = msg[key]['DA_nr'] || '' && msg[key]['SA_nr'] || '';
+        signed_td.innerHTML = (msg[key]['Signed_date']  || "N/A") + "<br>" + (msg[key]['Signed_time'] + " days"|| "N/A");
+        DASA_td.textContent = (msg[key]['DA_nr'] || '') + ( msg[key]['SA_nr'] || '');
         
         // Set the signed date and time    
         // Add id to each td (optional, based on your needs)        
