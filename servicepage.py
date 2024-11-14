@@ -14,10 +14,10 @@ import threading
 from multiprocessing import Process
 from datetime import datetime, timedelta
 
-
-import re
-
-import pandas as pd
+app = Flask(__name__)
+socket = SocketIO(app)
+thread_lock = threading.Lock()
+thread = None
 
 """
 old = MongoClient(f"mongodb://172.20.33.151:27017")
@@ -50,27 +50,12 @@ quit()
 
 
 
-
+#
 #DB_ERROR = MongoClient(f"mongodb://localhost:27017")
-#DB_ERROR_UPDATE = DB_ERROR["TEST"]
+#DB_ERROR_UPDATE = DB_ERROR["TESTs"]
 
-Visblue_database = MongoClient(f"mongodb://172.20.33.163:27017")
-db_log = Visblue_database["Service_log"]
-
-AlarmCodes = {0 : "OK",
-              1 : "DiffPressure_Alarm",
-              2 : "ElectrolyteTemp_Alarm",
-              3 : "DiffPressure_Alarm, ElectrolyteTemp_Alarm",
-              4 : "Leak_Alarm",
-              5 : "Leak_Alarm, DiffPressure_Alarm",
-              6 : "Leak_Alarm, ElectrolyteTemp_Alarm",
-              7 : "Leak_Alarm, DiffPressure_Alarm, ElectrolyteTemp_Alarm ",
-              8 : "Emergency stop",
-              16 : "Tankpressure to high",
-              32 : "ElectrolyteTankImbalance",
-              64 : "Preesure_Alarm",
-              128:  "IOboardComm_Alarm",
-              }
+#Visblue_database = MongoClient(f"mongodb://172.20.33.163:27017")
+#db_log = Visblue_database["Service_log"]
 
 Alarmkoder = {"0000000000000010 ": 'CPLD_Alarm',
               "0000000000000100 ": 'DetectNoEM',
@@ -306,14 +291,14 @@ class Visblue_main():
 
     def gather_battery_data(self):
         self.battery.battery_read_data()
-        self.data['Battery_ACPower']               = self.battery.battery_read_ACPower()
-        self.data['Battery_Charge_Setpoint']        = self.battery.battery_read_charge_setpoint()
-        self.data['Battery_Discharge_Setpoint']     = self.battery.battery_read_discharge_setpoint()
-        self.data['Battery_State_of_Charge']        = self.battery.battery_read_soc()
-        self.data['Battery_Alarm_State']             = self.battery.battery_read_alarm_state()
-        self.data['Battery_Temperature']            = self.battery.battery_read_temperature()
-        self.data['Battery_frozen']              = self.battery.battery_check_frozen()
-        self.data['Battery_Setpoint_error'] = self.battery.battery_check_setpoint()
+        self.data['Battery_ACPower']                    = self.battery.battery_read_ACPower()
+        self.data['Battery_Charge_Setpoint']            = self.battery.battery_read_charge_setpoint()
+        self.data['Battery_Discharge_Setpoint']         = self.battery.battery_read_discharge_setpoint()
+        self.data['Battery_State_of_Charge']            = self.battery.battery_read_soc()
+        self.data['Battery_Alarm_State']                = self.battery.battery_read_alarm_state()
+        self.data['Battery_Temperature']                = self.battery.battery_read_temperature()
+        self.data['Battery_frozen']                     = self.battery.battery_check_frozen()
+        self.data['Battery_Setpoint_error']             = self.battery.battery_check_setpoint()
         
         self.bat_power = self.battery.battery_read_ACPower()
         self.em_power = self.energymeter.em_read_power()
@@ -370,13 +355,50 @@ class Visblue_main():
         return
         self.gather_battery_data()
         self.calculate_consumption()
+
+
+def background_threads():
         
+   # site = 'Mollerup'
+   # em_ip = "172.20.33.195"
+   # pv_ip = "192.168.3.196"
+   # pv_info = 'Fronius_Eco'
+   # em_info = 'Carlo'
+   # bat_ip = "172.20.33.12"
+#
+#
+   # #site    = 'Gelsted'
+   # #em_ip   = "172.20.32.56"
+   # #pv_ip   = "172.20.32.58"
+   # #bat_ip  = "172.20.32.54"
+#
+   # site_1 = Visblue_main("Mollerup", 10680,  bat_ip, em_ip, pv_ip, pv_info, em_info)
+#
+   # site_1.run()
+    socket.emit('table', "site_1.data")
+
+
+@socket.on("connect")
+def connect():
+    print("Client connected")
+    global thread
+    with thread_lock:
+        if thread is None:
+            thread = socket.start_background_task(background_threads)
 
     
 
+@app.route('/')
+def home():
+    return render_template('index.html')
+
+if __name__ == "__main__":
+   socket.run(app, debug=True)
+   #http_server = WSGIServer(("0.0.0.0", 5000), app)
+   #http_server.serve_forever()
 
 
-
+"""
 from time import sleep
 
 site = 'Mollerup'
@@ -397,4 +419,4 @@ site_1 = Visblue_main("Mollerup", 10680,  bat_ip, em_ip, pv_ip, pv_info, em_info
 site_1.run()
 print(site_1.data)
 
-
+"""
