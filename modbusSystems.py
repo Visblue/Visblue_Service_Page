@@ -186,7 +186,8 @@ class Battery_conn(MODBUS):
         return self.battery_data[15]
     
     def battery_read_alarm_state(self):
-        return self.battery_data[1]
+        return convertAlarmCode(self.battery_data[1])
+        #return self.battery_data[1]
 
     def battery_read_temperature(self):
         return self.battery_data[5]

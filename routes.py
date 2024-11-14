@@ -49,3 +49,9 @@ def fejloversigt():
         
         return render_template("fejloversigt.html", siteErrorData=all_data)
     
+
+
+@main_blueprint.route('/reset_battery', methods=['GET', 'POST'  ])    
+def reset_battery():       
+    print("HERE")
+    return render_template("fejloversigt.html")

@@ -27,6 +27,22 @@
 
 
     <style>
+
+
+    .textClass{
+        font-family: 'Arial', sans-serif;
+        color: white;
+        text-align: center;
+        padding: 15px;
+        font-size: 24px;
+    }
+
+
+
+
+
+
+
      
         .PickTime {
             text-align: left;
@@ -404,7 +420,7 @@
                     <input class="simple-button" style="width:60px;" id="{{customer[i]}}_Save" type="submit" value="Save" name="{{customer[i]}}" onclick="Plan(name)" ></td>
                 
                 <td style="text-align:center;" >
-					<form action="/resetBattery" method="POST"  target="_blank">
+					<form action="/reset_battery" method="POST"  target="_blank">
 					    <input type="hidden" name="customerId"  id="{{customer[i]}}_resBtn">
 					    <!--<label for="code">Indtast kode:</label>-->
 					    <input required type="text" name="code" id="code"  maxlength="14"   style="width: 100px;"> <!-- Justeret bredde  id="{{customer[i]}}_Save"-->

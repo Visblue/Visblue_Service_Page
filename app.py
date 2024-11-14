@@ -13,6 +13,7 @@ from multiprocessing import Process
 from datetime import datetime, timedelta
 from routes import main_blueprint
 from modbusSystems import Battery_conn, EnergyMeter_conn, PV_conn
+
 app = Flask(__name__)
 socket = SocketIO(app)
 thread_lock = threading.Lock()
@@ -43,27 +44,29 @@ class Visblue_main():
     def connect(self):
         #self.em_conn    = self.energymeter.try_connect()
         #self.pv_conn    = self.pv.try_connect()
-        self.bat_conn   = self.battery.try_connect()
+        self.bat_conn    = self.battery.try_connect()
         #self.data['Em_connection_status']       = self.em_conn
         #self.data['Pv_connection_status']       = self.pv_conn
         self.data['Battery_connection_status']  = self.bat_conn
 
     def gather_battery_data(self):
         self.battery.battery_read_data()
-        self.data['Battery_ACPower']                    = self.battery.battery_read_ACPower()
-        self.data['Battery_Charge_Setpoint']            = self.battery.battery_read_charge_setpoint()
-        self.data['Battery_Discharge_Setpoint']         = self.battery.battery_read_discharge_setpoint()
-        self.data['Battery_State_of_Charge']            = self.battery.battery_read_soc()
-        self.data['Battery_Alarm_State']                = self.battery.battery_read_alarm_state()
-        self.data['Battery_Temperature']                = self.battery.battery_read_temperature()
-        self.data['Battery_frozen']                     = self.battery.battery_check_frozen()
-        self.data['Battery_Setpoint_error']             = self.battery.battery_check_setpoint()
-        
-        self.bat_power = self.battery.battery_read_ACPower()
-        self.em_power = self.energymeter.em_read_power()
-        self.pv_power = self.pv.pv_read_power()
-        self.data['Energymeter_ACPower']    =  self.em_power
-        self.data['PV_ACPower']             =   self.pv_power
+        self.data['Project_nr'] = self.project_nr
+        self.data['Battery_ACPower']                        = self.battery.battery_read_ACPower()
+        self.data['Battery_Charge_Setpoint']                = self.battery.battery_read_charge_setpoint()
+        self.data['Battery_Discharge_Setpoint']             = self.battery.battery_read_discharge_setpoint()
+        self.data['Battery_State_of_Charge']                = self.battery.battery_read_soc()
+        self.data['Battery_Alarm_State']                    = self.battery.battery_read_alarm_state()
+        self.data['Battery_Temperature']                    = self.battery.battery_read_temperature()
+        self.data['Battery_frozen']                         = self.battery.battery_check_frozen()
+        self.data['Battery_Setpoint_error']                 = self.battery.battery_check_setpoint()
+        self.data['Battery_control']                        = self.battery.battery_current_control()
+
+        self.bat_power                                      = self.battery.battery_read_ACPower()
+        self.em_power                                       = self.energymeter.em_read_power()
+        self.pv_power                                       = self.pv.pv_read_power()
+        self.data['Energymeter_ACPower']                    = self.em_power
+        self.data['PV_ACPower']                             = self.pv_power
 
        
     def calculate_consumption(self):
@@ -107,7 +110,9 @@ class Visblue_main():
     def run(self):
        
         self.connect()   
-        #self.driftsikring()
+        self.gather_battery_data()
+        self.driftsikring()
+        print(self.data)
         return
         self.gather_battery_data()
         self.calculate_consumption()
@@ -146,9 +151,20 @@ def get_info(col_name):
 
 info = MongoClient('mongodb://172.20.33.151:27017/')
 db = info['Site_information']
+bat_ip = "172.20.33.12"
+
 def background_threads():
    #while True:
-   pass
+     
+        site = Visblue_main('col_name', 10280, bat_ip ,"0","0", "0", "0")
+        site.run()
+        
+        
+        socket.emit('table', {'Mollerup':site.data })
+        socket.sleep(3)
+    
+        #print("SENT!")
+  # pass
       # socket.sleep(2)        
       # total_data = {}
       # for i in db.list_collection_names():
@@ -159,7 +175,8 @@ def background_threads():
       ##                        'C' : {"TEST" : 123,},
       ##                        'D' : {"TEST" : 123,} } )
        #                        
-                                
+#ackground_threads()
+#quit()                        
 db_VisblueService = "VisblueService"
 db_VisblusSiteLog = "VisblueLog"
 db_MypowergridTimer = 'ServicePageTimer'
