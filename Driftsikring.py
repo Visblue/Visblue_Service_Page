@@ -36,10 +36,12 @@ def driftsikring(project_nr):
                 split_signed_date = str(csv_signed[i]).split(" ")                
                 if  len(split_signed_date) >= 2 :                                                                
                     SINGED_DATE = split_signed_date[0]     
-                    print(SINGED_DATE)
+                    
                     DATA['Signed_date'] = SINGED_DATE
                     DATA['Signed_time'] = (datetime.strptime(SINGED_DATE, "%Y-%m-%d") - datetime.now()).days
                     DATA['Site_prioritet'] = csv_prioritet[i]
+                    if str(csv_prioritet[i]) == "2":
+                        DATA['Site_prioritet_color'] = "red"
                 if str(csv_driftsikring_aftale_Active[i]).lower()== "x":
                     DATA['DA_nr'] = csv_driftsikring_aftale_nr[i]
                 if str(csv_spotpris_aftale_Active[i]).lower( )== "x":

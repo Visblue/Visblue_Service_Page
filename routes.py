@@ -55,3 +55,6 @@ def fejloversigt():
 def reset_battery():       
     print("HERE")
     return render_template("fejloversigt.html")
+
+
+

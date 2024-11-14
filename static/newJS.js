@@ -30,20 +30,22 @@ function add_note_area(key) {
     noteBtn = document.createElement("textarea");
     noteBtn.type = "text";            
     noteBtn.rows = 2;
-    noteBtn.cols = 40;       
+    noteBtn.cols = 40;    
+    noteBtn.style.textAlign = "center";   
     noteBtn.style.backgroundColor = "transparent";
-    noteBtn.id = `input-${key}`;
+    noteBtn.id = `input-${key}`;    
     noteBtn.name = key
     noteBtn.style.resize = "none";
     noteBtn.textAlign = "center";
 
     noteBtn.onchange  = function() {
-        save_plan(this.name, this.value);
+        save_note(this.name, this.value);
     }
     return noteBtn
 }   
-function  save_plan(key, value) {
+function  save_note(key, value) {
     console.log(key, value);
+    socket.emit('note', {key: key, value: value});
 }
 
 function add_data(msg) {
@@ -81,7 +83,7 @@ function add_data(msg) {
         newRow.classList.add("textClass")
         
         // Populate other cells with data
-        nr_td.innerHTML = msg[key]["Project_nr"] + "&nbsp; &nbsp;"  || "&nbsp; &nbsp; N/A";  // Set the key (A, B, C, D)
+        nr_td.innerHTML = "<b style='color:"+ msg[key]['Site_prioritet_color'] + ";'>[" +( msg[key]['Site_prioritet'] || "9") + "]</b>&nbsp;" +( msg[key]["Project_nr"] + "&nbsp; &nbsp;"  || "&nbsp; &nbsp; N/A");  // Set the key (A, B, C, D)
         nr_td.style.textAlign = "right";
         site_td.innerHTML = "&nbsp;" + key   || "&nbsp; N/A ";  // Assuming Site key exists in msg
         site_td.style.textAlign = "left";
@@ -109,7 +111,7 @@ function add_data(msg) {
         signed_td.id = `signed_td-${key}`;
         DASA_td.id = `DASA_td-${key}`;
         planning_td.id = `planning_td-${key}`;
-        //reset_btn_td.id = `reset_btn_td-${key}`;
+        reset_btn_td.style.textAlign = "center";
 
         // Check if the row already exists based on the key
         const existingRow = document.getElementById(`row-${key}`);
@@ -144,64 +146,6 @@ function add_data(msg) {
             // Append the reset button cell to the row            
             reset_btn_td.appendChild(form_reset);            
             newRow.appendChild(reset_btn_td);
-            
-
-            // Append the row to the table
-            table.appendChild(newRow);
-        }
-    }
-}
-
-function add_datas(msg) {
-
-    const table = document.getElementById("tables"); // Replace with your actual table's tbody ID
-
-    // Iterate over each key in the msg object
-    for (let key in msg) {
-        const newRow = document.createElement("tr");
-        console.log(key, msg[key]);
-        // Create new cells
-        const key_td = document.createElement("td");
-        const site_td = document.createElement("td");
-        const nr_td = document.createElement("td");
-        const power_td = document.createElement("td");
-        const soc_td = document.createElement("td");
-
-        // Set a unique id for the row based on the unique key
-        newRow.id = `row-${key}`;  // Unique ID based on the key
-
-        // Populate cells with data
-        site_td.textContent = key || "N/A";  // Set the key (A, B, C, D)
-        nr_td.textContent = msg[key]["Project_nr"] || "N/A";  // Set the TEST value
-        power_td.textContent = msg[key]["Battery_ACPower"] || 0;  // Set the POWER value
-        soc_td.textContent = msg[key]["Battery_State_of_Charge"] || 0;  // Set the SOC value
-
-        
-        
-        // Add id to each td (optional, based on your needs)
-        key_td.id = `key-${key}`;
-        site_td.id = `site_td-${key}`;
-        nr_td.id = `nr_td-${key}`;
-        power_td.id = `power_td-${key}`;
-        soc_td.id = `soc_td-${key}`;
-     
-        // Check if the row already exists based on the key
-        const existingRow = document.getElementById(`row-${key}`);
-        console.log(msg[key]["Battery_ACPower"] ,msg[key]["Battery_State_of_Charge"])
-        if (existingRow) {
-            // If the row exists, update the cells
-            //existingRow.querySelector(`#test-${key}`).textContent = msg[key]["TEST "] || "N/A";
-           // existingRow.querySelector(`#site_td-${key}`).textContent = key || "non"; //msg[key]["TEST "] || "N/A";
-           //existingRow.querySelector(`#nr_td-${key}`).textContent = msg[key]["TEST "] || "N/A";
-            existingRow.querySelector(`#power_td-${key}`).textContent = msg[key]["Battery_ACPower"] || 0;
-            existingRow.querySelector(`#soc_td-${key}`).textContent = msg[key]["Battery_State_of_Charge"];// || "N/A";
-        } else {
-            // If the row doesn't exist, append the new row
-            newRow.appendChild(key_td);
-            newRow.appendChild(site_td);
-            newRow.appendChild(nr_td);
-            newRow.appendChild(power_td);
-            newRow.appendChild(soc_td);
             
 
             // Append the row to the table

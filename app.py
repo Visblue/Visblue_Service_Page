@@ -20,7 +20,7 @@ thread_lock = threading.Lock()
 thread = None
 
 app.register_blueprint(main_blueprint)
-visblueDB = MongoClient('mongodb://172.20.33.151:27017/')
+visblueDB = MongoClient('mongodb://172.20.33.163:27017/')
 
 
 class Visblue_main():
@@ -183,8 +183,8 @@ class Visblue_main():
 
 
 
-def lookup_db_for_plan(col_name):
-    db = visblueDB['VisblueService']
+def lookup_db_for_notes(col_name):
+    db = visblueDB['service_page_notes']
     col = db.get_collection(col_name)
     data = col.find_one({}, {"_id": 0})    
     if data is None:        
@@ -242,6 +242,18 @@ db_VisblueService = "VisblueService"
 db_VisblusSiteLog = "VisblueLog"
 db_MypowergridTimer = 'ServicePageTimer'
 
+
+
+@socket.on('note')    
+def save_note(msg):       
+    db = visblueDB['service_page_notes']
+    col = db[msg['key']]
+    res = col.insert_one({
+        'Time' : datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        'Site' : msg['key'],
+        'Note' : msg['value']})
+    print(res.acknowledged)
+    
 @socket.on("connect")
 def connect():
     print("Client connected")
@@ -260,9 +272,9 @@ def home():
 import eventlet
 if __name__ == "__main__":
    
-    #socket.run(app, debug=True)
-    #http_server = WSGIServer(("0.0.0.0", 2000), app)
-    eventlet.wsgi.server(eventlet.listen(('0.0.0.0', 2000)), app)
+    socket.run(app, debug=True)
+    http_server = WSGIServer(("0.0.0.0", 2000), app)
+    #eventlet.wsgi.server(eventlet.listen(('0.0.0.0', 2000)), app)
     #http_server.serve_forever()
 
 
