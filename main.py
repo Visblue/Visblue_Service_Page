@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 from TotalList import Customers, names, AlarmCodes, BatteryStatesCodes, NewAlarmCodes
 import re
 from EnerginetServcePage import Elprices
+
 import pandas as pd
 
 
