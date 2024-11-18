@@ -123,7 +123,7 @@ class EnergyMeter_conn(MODBUS):
             self.power =self.carlo_ACPower()
         if self.system_info == 'server':
             self.power =self.server_ACPower()
-        
+        print("EM: ", self.power)
         return self.power
    
 
@@ -138,6 +138,7 @@ class PV_conn(MODBUS):
 
     
     def pv_read_power(self):
+        print("PV systeminfo:", self.system_info)
         self.power = None
         if self.system_info == "siemens":
             self.power =  self.siemens_ACPower()
@@ -149,7 +150,7 @@ class PV_conn(MODBUS):
             self.power= self.fronius_eco_ACPower()
         if self.system_info == 'fronius_symo':
             self.power= self.fronius_symo_ACPower()
-       # print("PV: ", self.power)
+        print("PV: ", self.power)
         return self.power
 
 
@@ -175,15 +176,18 @@ class Battery_conn(MODBUS):
     
     def battery_read_actual_discharge_setpoint(self):
         return self.battery_data[23]
+    
+    def battery_read_battery_state(self):
+        return self.battery_data[0]
 
     def battery_read_charge_setpoint(self):
-        return self.battery_data[24]
+        return int(self.battery_data[24])
     
     def battery_read_discharge_setpoint(self):
-        return self.battery_data[25]
+        return int(self.battery_data[25])
     
     def battery_read_soc(self):
-        return self.battery_data[15]
+        return int(self.battery_data[15])
     
     def battery_read_alarm_state(self):
         if self.battery_data[1] > 0:
@@ -197,8 +201,9 @@ class Battery_conn(MODBUS):
     def battery_read_control_reg(self):
         return self.battery_data[26]
     def battery_current_control(self):
+        print(int(self.battery_read_control_reg()))
         control_modes = {0: 'EM Control', 1: 'Smartflow', 2: 'Auto'} 
-        return control_modes.get(self.battery_data[26], 'Unknown control')  
+        return control_modes.get(int(self.battery_read_control_reg()), 'Unknown control')  
     
     def battery_check_frozen(self):
         if self.battery_read_ACPower() > 1000 and self.battery_read_ACPower() > -100: 

@@ -52,4 +52,3 @@ def driftsikring(project_nr):
     return DATA
 
 
-print(driftsikring(10280))

@@ -1,42 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.4/socket.io.js" integrity="sha512-aMGMvNYu8Ue4G+fHa359jcPb1u+ytAF+P2SCb+PxrjCdO3n3ZTxJ30zuH39rimUggmTwmh2u7wvQsDTHESnmfQ==" crossorigin="anonymous"></script>
+		<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap" async defer></script>
+		<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu|Lora" />
+		<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Trirong" />
+		<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
 
-<head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.4/socket.io.js"
-        integrity="sha512-aMGMvNYu8Ue4G+fHa359jcPb1u+ytAF+P2SCb+PxrjCdO3n3ZTxJ30zuH39rimUggmTwmh2u7wvQsDTHESnmfQ=="
-        crossorigin="anonymous"></script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap" async defer></script>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu|Lora" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Trirong" />
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+		<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css" />
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
 
-    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
+		<meta charset="UTF-8" />
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" />
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-    <meta charset="UTF-8" />
-        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	
-	<script src="{{url_for('static', filename='newJS.js')}}"></script>
+		<script src="{{url_for('static', filename='newJS.js')}}"></script>
 
-
-    <style>
+		<style>
 
 
-    .textClass{
-        font-family: 'Arial', sans-serif ;
-        font-weight: bold ;
-        color: white;
-        text-align: center;
-        padding: 15px;
-        font-size: 24px;
-    }
+			   .textClass{
+			       font-family: 'Arial', sans-serif ;
+			       font-weight: bold ;
+			       color: white;
+			       text-align: center;
+			       padding: 15px;
+			       font-size: 24px;
+			   }
 
 
 
@@ -44,393 +40,390 @@
 
 
 
-     
-        .PickTime {
-            text-align: left;
-            font-size: 15px;
-            text-align: center; 
-            font-weight:bold
-          
-            color:black;           
-        	padding: 8px;
-            margin:0px;
-            border:0px;
-            border-radius:5px;              
-            cursor: pointer;
-        }
-        
-		button.resetbtn:hover{
-			color:white;
-			background-color:black;
-		}
-		input.PickTime:hover{
-				color:white;
-			background-color:black;
-		}        
-		
-		.resetbtn {
-           
-            color: black;
-            /*background-color:grey;/*#0d6efd;*/
-            border:0px;
-          
-            font-weight: bold;
-          /*  line-height: 1.5;*/
-            text-align: center;
-           /* border: 1px solid transparent;*/
-            border-radius:5px;
-            padding: 5px;
-            font-size: 14px;
-         
-            /*transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;*/
-        }
 
-        .name {
-            display: inline-block;
-            font-size: 25px;
-            position: relative;
-            animation: disperse 2.4s forwards;
-        }
+			       .PickTime {
+			           text-align: left;
+			           font-size: 15px;
+			           text-align: center;
+			           font-weight:bold
 
-        @keyframes disperse {
-            0% {
-                opacity: 1;
-                transform: translateX(0);
-            }
+			           color:black;
+			       	padding: 8px;
+			           margin:0px;
+			           border:0px;
+			           border-radius:5px;
+			           cursor: pointer;
+			       }
 
-            100% {
-                opacity: 0;
-                transform: translateX(70px);
-            }
-        }
+				button.resetbtn:hover{
+					color:white;
+					background-color:black;
+				}
+				input.PickTime:hover{
+						color:white;
+					background-color:black;
+				}
 
+				.resetbtn {
 
+			           color: black;
+			           /*background-color:grey;/*#0d6efd;*/
+			           border:0px;
 
-        .info {        	         
-            color-scheme: dark;          
-            font-size: 16px;
+			           font-weight: bold;
+			         /*  line-height: 1.5;*/
+			           text-align: center;
+			          /* border: 1px solid transparent;*/
+			           border-radius:5px;
+			           padding: 5px;
+			           font-size: 14px;
 
-        }
+			           /*transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;*/
+			       }
 
-        .pageInfo {
-            visibility: hidden;
-            width: 50px;
-            background-color: black;
-            color: white;
-            text-align: center;
-            z-index: 1;
+			       .name {
+			           display: inline-block;
+			           font-size: 25px;
+			           position: relative;
+			           animation: disperse 2.4s forwards;
+			       }
 
+			       @keyframes disperse {
+			           0% {
+			               opacity: 1;
+			               transform: translateX(0);
+			           }
 
-        }
-        .Rotates{
-        	font-size:55px;
-        
-        	transform: rotate(60deg);
-        	transform: scaleY(1.5);} 
-
-
-        .info:hover {
-            visibility: visible;
-        }
-
-        .tip {
-            visibility: hidden;
-            width: 140px;
-            background-color: black;
-            color: #fff;
-            text-align: left;
-            border-radius: 6px;
-            /*padding: 10px 10px;*/
-            right: 6.5%;
-
-            /* Position the tooltip */
-
-
-            position: absolute;
-            z-index: 1;
-        }
-
-        @keyframes example {
-            0% {
-                background-color: red;
-            }
-
-            25% {
-                background-color: yellow;
-            }
-
-            50% {
-                background-color: blue;
-            }
-
-            100% {
-                background-color: green;
-            }
-        }
+			           100% {
+			               opacity: 0;
+			               transform: translateX(70px);
+			           }
+			       }
 
 
 
-        .tables {
-            font-family: Calibri light;
-            border-collapse: collapse;
-            background-color: #2C3446;
-            /*black;*/
-            color: white;
-            /*font-size: 20px;*/
-            overflow-x: auto;
-            width: 100%;
-            text-align:center;
-        }
+			       .info {
+			           color-scheme: dark;
+			           font-size: 16px;
 
-        .tables th {        	
-            font-size: 22px;                                          
-        	position: sticky;
-		    top: 0;
-            background-color: #1F2739;
-            text-align:center;
-            /* #0041a2;*/
-        }
+			       }
 
-        .tables td{      
-            font-size: 16px;           
-	        border-bottom: solid 1px #2C3446;
-	        text-align:center;
-            
-        }
-      
+			       .pageInfo {
+			           visibility: hidden;
+			           width: 50px;
+			           background-color: black;
+			           color: white;
+			           text-align: center;
+			           z-index: 1;
 
-        .tables tr:nth-child(even) {
-        	font-size: 35px; 
-            background-color: #323C50;
-    	  
 
-            /*#3f3535;*/
-        }
-          .tables td:nth-child(2), .tables td:nth-child(2) {
-        	width = 130px;
+			       }
+			       .Rotates{
+			       	font-size:55px;
 
-            /*#3f3535;*/
-        }
-        .tables th:nth-child(7), .tables td:nth-child(7){
-        	  width: 150px;
-        	  text-align:center;
-        	  
-        	  overflow-y: auto;
-        	
-        }
-      .tables th:nth-child(10) {
-        	  width: 120px;        	          
-        }
-		.tables th:nth-child(11) {
-		    width: 160px; /* Width of the third column */
-		    
-		}
-	
-          .battery {
-        width: 40px;
-        height: 25px;
-        rotate: -90deg ;
-        border: 2px solid white;
-        position: relative;
-        top:50%;
-        left: 25%;
-        /*margin: 20px;*/
-    }
-    
-    .battery-tip {
-        content: '';
-        width: 5px;
-        height: 11px;
-        background: white;
-        position: absolute;
-        top: 5px;
-        right: -10px;
-    }
-    
-    .battery-level {
-        height: 100%;
-        
-        width: 0;
-        transition: width 2.5s;
-    }
-    
-     .map-box {
-     	position:absolute;
-     	top:20%;
-            width: 40px;
-            height:20px;
-            rotate: 1 0 0 60deg;
-            margin: 100px auto;
-            background-color: white;
-            border-radius: 40px;
-            position: relative;
-            opacity: 70%;
-            animation: moveUpDown 2s infinite;
-        }
+			       	transform: rotate(60deg);
+			       	transform: scaleY(1.5);}
 
-       
 
-        @keyframes moveUpDown {
-            0%, 100% {
-                transform: translateY(0);
-                border-radius: 40px;
-            }
-            50% {
-                transform: translateY(-20px);
-                border-radius: 50px;
-                width: 80px;
-            }
-        }
-          .fancy-button {
-            background: linear-gradient(45deg, #6a11cb, #2575fc);
-            border: none;
-            border-radius: 12px;
-            color: white;
-            padding: 6px 15px;
-            font-size: 16px;
-            cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            transition: transform 0.2s;
-        }
+			       .info:hover {
+			           visibility: visible;
+			       }
 
-        .fancy-button:hover {
-            transform: scale(1.05);
-        }
-	.simple-button {
-            background-color: #007BFF; 
-            border: none;
-            border-radius: 5px; 
-            color: white;
-            padding: 6px 12px;
-            font-size: 14px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
+			       .tip {
+			           visibility: hidden;
+			           width: 140px;
+			           background-color: black;
+			           color: #fff;
+			           text-align: left;
+			           border-radius: 6px;
+			           /*padding: 10px 10px;*/
+			           right: 6.5%;
 
-        .simple-button:hover {
-            background-color: #0056b3; 
-        }
-        
-        
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            position: relative;
-            background-color: #f9f9f9;
-            transition: filter 0.5s; /* Smooth transition for the blur effect */
-        }
+			           /* Position the tooltip */
 
-        .loader {
-            width: 100px;
-            height: 100px;
-            border: 10px solid #f3f3f3; /* Light grey */
-            border-top: 10px solid #3498db; /* Blue */
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 1000; /* Ensures it stays on top */
-        }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+			           position: absolute;
+			           z-index: 1;
+			       }
 
-        .overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.3); /* Semi-transparent dark overlay */
-            z-index: 999; /* Just below the loader */
-        }
+			       @keyframes example {
+			           0% {
+			               background-color: red;
+			           }
 
-        .blurred {
-            filter: blur(5px); /* Adjust the blur amount as needed */
-        }
+			           25% {
+			               background-color: yellow;
+			           }
 
-        .hidden {
-            display: none;
-        }
+			           50% {
+			               background-color: blue;
+			           }
 
-    </style>
+			           100% {
+			               background-color: green;
+			           }
+			       }
 
-    <title>Visblue Service Page</title>
-</head>
-<body>
-    <!--<div class="overlay" id="overlay">
+
+
+			       .tables {
+			           font-family: Calibri light;
+			           border-collapse: collapse;
+			           background-color: #2C3446;
+			           /*black;*/
+			           color: white;
+			           /*font-size: 20px;*/
+			           overflow-x: auto;
+			           width: 100%;
+			           text-align:center;
+			       }
+
+			       .tables th {
+			           font-size: 22px;
+			       	position: sticky;
+				    top: 0;
+			           background-color: #1F2739;
+			           text-align:center;
+			           /* #0041a2;*/
+			       }
+
+			       .tables td{
+			           font-size: 16px;
+			        border-bottom: solid 1px #2C3446;
+			        text-align:center;
+
+			       }
+
+
+			       .tables tr:nth-child(even) {
+			       	font-size: 35px;
+			           background-color: #323C50;
+
+
+			           /*#3f3535;*/
+			       }
+			         .tables td:nth-child(2), .tables td:nth-child(2) {
+			       	width = 130px;
+
+			           /*#3f3535;*/
+			       }
+			       .tables th:nth-child(7), .tables td:nth-child(7){
+			       	  width: 150px;
+			       	  text-align:center;
+
+			       	  overflow-y: auto;
+
+			       }
+			     .tables th:nth-child(10) {
+			       	  width: 120px;
+			       }
+				.tables th:nth-child(11) {
+				    width: 160px; /* Width of the third column */
+
+				}
+
+			         .battery {
+			       width: 40px;
+			       height: 25px;
+			       rotate: -90deg ;
+			       border: 2px solid white;
+			       position: relative;
+			       top:50%;
+			       left: 25%;
+			       /*margin: 20px;*/
+			   }
+
+			   .battery-tip {
+			       content: '';
+			       width: 5px;
+			       height: 11px;
+			       background: white;
+			       position: absolute;
+			       top: 5px;
+			       right: -10px;
+			   }
+
+			   .battery-level {
+			       height: 100%;
+
+			       width: 0;
+			       transition: width 2.5s;
+			   }
+
+			    .map-box {
+			    	position:absolute;
+			    	top:20%;
+			           width: 40px;
+			           height:20px;
+			           rotate: 1 0 0 60deg;
+			           margin: 100px auto;
+			           background-color: white;
+			           border-radius: 40px;
+			           position: relative;
+			           opacity: 70%;
+			           animation: moveUpDown 2s infinite;
+			       }
+
+
+
+			       @keyframes moveUpDown {
+			           0%, 100% {
+			               transform: translateY(0);
+			               border-radius: 40px;
+			           }
+			           50% {
+			               transform: translateY(-20px);
+			               border-radius: 50px;
+			               width: 80px;
+			           }
+			       }
+			         .fancy-button {
+			           background: linear-gradient(45deg, #6a11cb, #2575fc);
+			           border: none;
+			           border-radius: 12px;
+			           color: white;
+			           padding: 6px 15px;
+			           font-size: 16px;
+			           cursor: pointer;
+			           box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+			           transition: transform 0.2s;
+			       }
+
+			       .fancy-button:hover {
+			           transform: scale(1.05);
+			       }
+			.simple-button {
+			           background-color: #007BFF;
+			           border: none;
+			           border-radius: 5px;
+			           color: white;
+			           padding: 6px 12px;
+			           font-size: 14px;
+			           cursor: pointer;
+			           transition: background-color 0.3s;
+			       }
+
+			       .simple-button:hover {
+			           background-color: #0056b3;
+			       }
+
+
+			       body {
+			           font-family: Arial, sans-serif;
+			           margin: 0;
+			           padding: 0;
+			           position: relative;
+			           background-color: #f9f9f9;
+			           transition: filter 0.5s; /* Smooth transition for the blur effect */
+			       }
+
+			       .loader {
+			           width: 100px;
+			           height: 100px;
+			           border: 10px solid #f3f3f3; /* Light grey */
+			           border-top: 10px solid #3498db; /* Blue */
+			           border-radius: 50%;
+			           animation: spin 1s linear infinite;
+			           position: absolute;
+			           top: 50%;
+			           left: 50%;
+			           transform: translate(-50%, -50%);
+			           z-index: 1000; /* Ensures it stays on top */
+			       }
+
+			       @keyframes spin {
+			           0% { transform: rotate(0deg); }
+			           100% { transform: rotate(360deg); }
+			       }
+
+			       .overlay {
+			           position: fixed;
+			           top: 0;
+			           left: 0;
+			           width: 100%;
+			           height: 100%;
+			           background: rgba(0, 0, 0, 0.3); /* Semi-transparent dark overlay */
+			           z-index: 999; /* Just below the loader */
+			       }
+
+			       .blurred {
+			           filter: blur(5px); /* Adjust the blur amount as needed */
+			       }
+
+			       .hidden {
+			           display: none;
+			       }
+		</style>
+
+		<title>Visblue Service Page</title>
+	</head>
+	<body>
+		<!--<div class="overlay" id="overlay">
         <div class="loader" id="loader"></div>
     </div>-->
-    <div class="content " id="content">
-    <table class="tables" id="tables">
-        <thead>
-            <tr>
-                <th onclick="sortTable(0)" style="text-align:right;	" >Nr. &nbsp; &nbsp; &nbsp;</th>
-                <th onclick="sortTable(1)" style="text-align:left;	">Site</th>
-                <!--<th onclick="sortTable(2)" style="text-align: center; font-weight: bold;">Location</th>-->
-                <th onclick="sortTable(2)" >Status</th>               
-                <th onclick="sortTable(3)" >Power</th>
-                <th onclick="sortTable(4)" >SOC</th>
-                <!--<th onclick="sortTable(6)" >DKK/kW</th>-->
-                <!--<th onclick="sortTable(7)" style="text-align: center; font-weight: bold;">Setpoint</th>-->
-                <th onclick="sortTable(5)" id="TarifVersion" >Control</th>
-            	
-            	<th onclick="sortTable(7)">Note<!--<button style="font-size:20px; " id="Actionlog" onclick="Actionlog()">ActionLog</button>--></th>
-            	<th onclick="sortTable(8)" >Signed</th>
-            	<th  onclick="sortTable(9)">DA/SA</th><!--Operating warranty</th>-->
-                <th style="text-align:center;" onclick="sortTable(9)" colspan="2" >Reset</th>
-                <th  id="ResetRes"><form action="/fejloversigt" method="GET" target="/fejloversigt">
-                    <button class="fancy-button" >Show latest Error</button>
-                </form></th>
-                <!--<th onclick="sortTable(7)" style="text-align: center; font-weight: bold" id="Tarif">Tarifstyring Status</th>-->
 
-                <!--<th style="text-align:center; font-weight: bold;">Spotpris Live</th>-->
-            </tr>
-        </thead>
-        <tbody>
-            {% for i in range(customer|length) %} {%if i % 2 == 0%}
-            <tr class="active-row">
-                {%else%}
-            </tr>
+		<div class="content" id="content">
+			<table class="tables" id="tables">
+				<thead>
+					<tr>
+						<th onclick="sortTable(0)" style="text-align: right">&nbsp; &nbsp; &nbsp;</th>
+						<th onclick="sortTable(1)" style="text-align: right">Nr. &nbsp; &nbsp; &nbsp;</th>
+						<th onclick="sortTable(2)" style="text-align: left">Site</th>
+						<!--<th onclick="sortTable(2)" style="text-align: center; font-weight: bold;">Location</th>-->
+						<th onclick="sortTable(3)">Status</th>
+						<th onclick="sortTable(4)">Power</th>
+						<th onclick="sortTable(5)">SOC</th>
+						<!--<th onclick="sortTable(6)" >DKK/kW</th>-->
+						<!--<th onclick="sortTable(7)" style="text-align: center; font-weight: bold;">Setpoint</th>-->
+						<th onclick="sortTable(6)" id="TarifVersion">Control</th>
 
-            <tr>
-                {%endif%}
-                <td style="text-align:right;"	id="{{customer[i]}}_Projekt"				></td>
-                <td style="text-align:left;"	id="{{customer[i]}}"						></td>
-                <td style="text-align:center;"  id="{{customer[i]}}_battery_status"			></td>
-                <!--<td style="text-align: center; font-weight: bold;" id="{{customer[i]}}_Location"></td>                -->                
-                <td style="text-align:center;"  id="{{customer[i]}}_battery_power"			></td>
-                <td style="text-align:center;"  id="{{customer[i]}}_battery_soc"			></td>
-                <!-- <div class="battery" ><i style=" position: absolute; right:22%; top:38px; font-size: 16px; rotate:90deg;" id="{{customer[i]}}_SOC"></i><div class="battery-tip"></div><div  class="battery-level" id="{{customer[i]}}_SOCS"></div></div></td>-->
-                <!--<td id="{{customer[i]}}_Elpris"></td>-->
-                <!--<td style="text-align: Center;  font-weight: bold;" id="{{customer[i]}}_Setpoints"></td>-->
-                <!--<td style="text-align: center; font-weight: bold;" id="{{customer[i]}}_Astate"></td>-->
-                <td style="text-align:center;"  id="{{customer[i]}}_TarifstyringVersion"	></td>
-                
-                <td style="text-align:center;"  id="{{customer[i]}}_LastAction"	><textarea rows="2" cols="500" id="{{customer[i]}}_TextArea" onChange="saveNote(this);" style="background-color:transparent; color:white; width:380px; text-align:center; border-style:none; overflow:auto;" ></textarea></td>  
-                <td style="text-align:center;"  id="{{customer[i]}}_Deadline"				></td>
-                <td style="text-align:center;"  id="{{customer[i]}}_Drift"					> <i id="{{customer[i]}}_TEST"></i> </td>
-                <td style="text-align:center;" >
-                <i style="text-align: left; position: absolute;" id="{{customer[i]}}_plan_placeholder"></i> 
-                	<input required class="info"  id="{{customer[i]}}_plans"  type="date"  style="text-align:center; font-size:15px; width:100px; "><br>
-                    <input class="simple-button" style="width:60px;" id="{{customer[i]}}_Save" type="submit" value="Save" name="{{customer[i]}}" onclick="Plan(name)" ></td>
-                
-                <td style="text-align:center;" >
-					<form action="/reset_battery" method="POST"  target="_blank">
-					    <input type="hidden" name="customerId"  id="{{customer[i]}}_resBtn">
-					    <!--<label for="code">Indtast kode:</label>-->
-					    <input required type="text" name="code" id="code"  maxlength="14"   style="width: 100px;"> <!-- Justeret bredde  id="{{customer[i]}}_Save"-->
-					    <button style="width:60px;" type="submit" class="simple-button" id="{{ customer[i] }}res">Restart</button>
-				</form></td>
+						<th onclick="sortTable(7)">Note<!--<button style="font-size:20px; " id="Actionlog" onclick="Actionlog()">ActionLog</button>--></th>
+						<th onclick="sortTable(8)">Signed</th>
+						<th onclick="sortTable(9)">DA/SA</th>
+						<!--Operating warranty</th>-->
+						<th style="text-align: center" onclick="sortTable(9)" colspan="3">Reset</th>
+						<th id="ResetRes">
+							<form action="/fejloversigt" method="GET" target="/fejloversigt">
+								<button class="fancy-button">Show latest Error</button>
+							</form>
+						</th>
+						<!--<th onclick="sortTable(7)" style="text-align: center; font-weight: bold" id="Tarif">Tarifstyring Status</th>-->
 
+						<!--<th style="text-align:center; font-weight: bold;">Spotpris Live</th>-->
+					</tr>
+				</thead>
+				<tbody>
+					{% for i in range(customer|length) %} {%if i % 2 == 0%}
+					<tr class="active-row">
+						{%else%}
+					</tr>
 
+					<tr>
+						{%endif%}
+						<td style="text-align: right" id="{{customer[i]}}_Projekt"></td>
+						<td style="text-align: left" id="{{customer[i]}}"></td>
+						<td style="text-align: center" id="{{customer[i]}}_battery_status"></td>
+						<!--<td style="text-align: center; font-weight: bold;" id="{{customer[i]}}_Location"></td>                -->
+						<td style="text-align: center" id="{{customer[i]}}_battery_power"></td>
+						<td style="text-align: center" id="{{customer[i]}}_battery_soc"></td>
+						<!-- <div class="battery" ><i style=" position: absolute; right:22%; top:38px; font-size: 16px; rotate:90deg;" id="{{customer[i]}}_SOC"></i><div class="battery-tip"></div><div  class="battery-level" id="{{customer[i]}}_SOCS"></div></div></td>-->
+						<!--<td id="{{customer[i]}}_Elpris"></td>-->
+						<!--<td style="text-align: Center;  font-weight: bold;" id="{{customer[i]}}_Setpoints"></td>-->
+						<!--<td style="text-align: center; font-weight: bold;" id="{{customer[i]}}_Astate"></td>-->
+						<td style="text-align: center" id="{{customer[i]}}_TarifstyringVersion"></td>
 
-                <!--<form action="/resetBattery" method="POST"> pattern="[A-Za-z0-9]"
+						<td style="text-align: center" id="{{customer[i]}}_LastAction"><textarea rows="2" cols="500" id="{{customer[i]}}_TextArea" onChange="saveNote(this);" style="background-color: transparent; color: white; width: 380px; text-align: center; border-style: none; overflow: auto"></textarea></td>
+						<td style="text-align: center" id="{{customer[i]}}_Deadline"></td>
+						<td style="text-align: center" id="{{customer[i]}}_Drift"><i id="{{customer[i]}}_TEST"></i></td>
+						<td style="text-align: center">
+							<i style="text-align: left; position: absolute" id="{{customer[i]}}_plan_placeholder"></i>
+							<input required class="info" id="{{customer[i]}}_plans" type="date" style="text-align: center; font-size: 15px; width: 100px" /><br />
+							<input class="simple-button" style="width: 60px" id="{{customer[i]}}_Save" type="submit" value="Save" name="{{customer[i]}}" onclick="Plan(name)" />
+						</td>
+
+						<td></td>
+
+						<!--<form action="/resetBattery" method="POST"> pattern="[A-Za-z0-9]"
 			    <input type="hidden" name="customerId" value="{{ customer[i] }}">
     			<button type="submit" class="simple-button" id="{{ customer[i] }}res">Restart Battery</button>
 				</form>
@@ -438,15 +431,12 @@
                 form action="/resetBattery" method="POST">
                 	<i id="{{customer[i]}}res" ></i>
                 	<button style="text-align: center; "class="simple-button" > Restart Battery</button></form>-->
-                <!--<td style="text-align: center; font-weight: bold" id="{{customer[i]}}_Tarifstyring"></td>onclick="Reset(value)">-->
-            </tr>
-			 
-            {% else %} {%endfor%}
-           
-        </tbody>
-    </table>
-</div>
+						<!--<td style="text-align: center; font-weight: bold" id="{{customer[i]}}_Tarifstyring"></td>onclick="Reset(value)">-->
+					</tr>
 
-</body>
-
+					{% else %} {%endfor%}
+				</tbody>
+			</table>
+		</div>
+	</body>
 </html>

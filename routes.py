@@ -53,8 +53,36 @@ def fejloversigt():
 
 @main_blueprint.route('/reset_battery', methods=['GET', 'POST'  ])    
 def reset_battery():       
-    print("HERE")
-    return render_template("fejloversigt.html")
+    pass
+    """
+    try:
+        plc_client = ModbusTcpClient(str(IP), port=port)
+        if not plc_client.is_socket_open():
+            plc_client.connect()
+        
+        # Perform PLC reset sequence
+        if plc_client.read_holding_registers(26, 1, 1).registers != 1:
+            plc_client.write_register(26, 1, 1)
+        time.sleep(2)
+        plc_client.write_register(27, 1, 1)
+        time.sleep(5)
+        plc_client.write_register(27, 0, 1)
+        plc_client.write_register(26, 0, 1)
+
+        if plc_client.is_socket_open():
+            plc_client.close()
+
+        print(f"{site} - Restarted")
+
+        # Update restart status when the operation is completed successfully
+        restart_status[site] = "Restart completed"
+        
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        # Update restart status when the operation fails
+        restart_status[site] = f"Failed - {str(e)}"
+   
+    return render_template("fejloversigt.html")"""
 
 
 
