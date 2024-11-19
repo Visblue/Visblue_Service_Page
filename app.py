@@ -23,7 +23,7 @@ thread = None
 
 app.register_blueprint(main_blueprint)
 visblueDB = MongoClient('mongodb://172.20.33.163:27017/')
-
+db_error_log = visblueDB['error_log']
 
 class Visblue_main():
     def __init__(self, CUSTOMER, PROJECTNR, PLCIP, PLCPORT, EMIP, EMPORT, EMTYPE, PVIP, PVPORT, PVTYPE, PVUNITID):
@@ -44,6 +44,9 @@ class Visblue_main():
         self.pv_unitid = PVUNITID
         self.em_unitid = 1
 
+
+        self.check_for_em = False
+        self.check_for_pv = False
         self.em_conn = None
         self.pv_conn = None
         self.bat_conn = None
@@ -52,22 +55,25 @@ class Visblue_main():
         self.bat_power = None
         self.smartflow = None
         self.data = {}
-        self.setup()
+        self.setup_modbus()
 
-    def setup(self):
+    def setup_modbus(self):
         self.battery = Battery_conn(self.plc_ip, self.plc_port, 1)
-
         if self.em_ip is not None and self.em_type != 'DCC':
             self.energymeter = EnergyMeter_conn(
                 self.em_ip, self.em_port, self.em_unitid, self.em_type)
-
+            self.check_for_em = True
+        else:
+            self.check_for_em = False
+            
         if self.pv_ip is not None and self.pv_type != 'DCC':
-            print("SELF:PV ", self.pv_ip, self.pv_port,
-                  self.pv_unitid, self.pv_type)
             self.pv = PV_conn(self.pv_ip, self.pv_port,
                               self.pv_unitid, self.pv_type)
+            self.check_for_pv = True
+        else:
+            self.check_for_pv = False
 
-    def __chk_em_connection(self):
+    def __check_em_connection(self):
         if self.em_ip is not None and self.em_conn != 'DCC':
             self.em_conn = self.energymeter.try_connect()
         else:
@@ -84,15 +90,9 @@ class Visblue_main():
             self.pv_conn = True
         self.data['PV_connection_status'] = self.pv_conn
 
-    def connect(self):
+    def __check_battery_connection(self):
         self.bat_conn = self.battery.try_connect()
         self.data['Battery_connection_status'] = self.bat_conn
-
-        self.__chk_em_connection()
-        self.__check_pv_connection()
-
-
-#
 
 
     def get_battery_data(self):
@@ -103,7 +103,7 @@ class Visblue_main():
         self.data['Battery_Discharge_Setpoint'] = self.battery.battery_read_discharge_setpoint()
         self.data['Battery_State_of_Charge'] = self.battery.battery_read_soc()
         self.data['Battery_state'] = self.battery.battery_read_battery_state()
-        # self.data['Battery_Alarm_State']                    = self.battery.battery_read_alarm_state()
+        self.data['Battery_Alarm_State'] = None
         self.data['Battery_Temperature'] = self.battery.battery_read_temperature()
         # self.data['Battery_frozen']                         = self.battery.battery_check_frozen()
         self.data['Battery_Setpoint_error'] = self.battery.battery_check_setpoint()
@@ -118,22 +118,22 @@ class Visblue_main():
         self.pv_power = self.pv.pv_read_power()
         self.data['PV_ACPower'] = self.pv_power
 
-    def check_for_systems_errors(self):
+    def add_errors_to_data(self):
         self.fontEnd_status_color = 'white'
         self.__check_battery_error()
         self.__check_em_error()
-        if self.smartflow != False:
+        if self.smartflow != False and self.pv_conn:
             self.__check_pv_error()
             self.__check_MYP()
 
         self.data["Battery_Alarm_Color"] = self.fontEnd_status_color
 
     def __check_MYP(self):
-        self.get_em_data()
-        self.get_pv_data()
+        #self.get_em_data()
+        #self.get_pv_data()
         if self.calculate_consumption() is not None:
             if self.calculate_consumption() < 0:
-                if self.data['Battery_Alarm_State'] != "":
+                if self.data['Battery_Alarm_State'] != None:
                     self.data['Battery_Alarm_State'] += ',MYP_Cons_Error'
                 self.fontEnd_status_color = "red"
 
@@ -141,13 +141,13 @@ class Visblue_main():
 
         if self.smartflow or int(self.battery.battery_read_control_reg()) == 1:
             if not self.pv_conn:
-                if self.data.get('Battery_Alarm_State') != "":
+                if self.data.get('Battery_Alarm_State') != None:
                     self.data['Battery_Alarm_State'] += ", DetectNoPV"
                 self.fontEnd_status_color = "red"
 
     def __check_em_error(self):
         if not self.em_conn:
-            if self.data.get('Battery_Alarm_State') != "":
+            if self.data.get('Battery_Alarm_State') != None:
                 self.data['Battery_Alarm_State'] += ", DetectNoEM"
             else:
                 self.data['Battery_Alarm_State'] = "DetectNoEM"
@@ -181,6 +181,19 @@ class Visblue_main():
         self.data['Dataplotter'] = "http://" + \
             self.bat_ip + "/dataplotter/dataplotter.html"
 
+
+    def __update_get_collections(self):
+            self.col = None
+            self.add_new = False
+            col_found = False
+            for i in db_error_log.list_collection_names():          
+                if re.search(i.lower(), self.site.lower()):
+                    self.col = db_error_log[i]
+                    col_found = True
+                    break       
+            if not col_found:
+                self.col = db_error_log[self.site]            
+                self.add_new = True
     def update_database_error_log(self):
         self.__update_get_collections()
 
@@ -206,13 +219,21 @@ class Visblue_main():
             self.col.update_one(query, update_data, upsert=self.add_new)
 
     def run(self):
-        self.connect()
+        self.__check_battery_connection()
+        if self.check_for_em:
+            self.__check_em_connection()        
+        if self.check_for_pv:
+            self.__check_pv_connection()
+                    
         if self.bat_conn:
             self.get_battery_data()
-            self.driftsikring()
-          #  print(self.data)
-            self.check_for_systems_errors()
-
+            if self.em_conn:
+                self.get_em_data()            
+            if self.pv_conn:
+                self.get_pv_data()
+            self.driftsikring()          
+            self.add_errors_to_data()
+        self.update_database_error_log()
       #  print(self.data)
         return
         self.gather_battery_data()
@@ -226,12 +247,13 @@ db = info['Customer_info']
 def lookup_db_for_notes(col_name):
     db = visblueDB['service_page_notes']
     col = db.get_collection(col_name)
-    data = col.find_one({}, {"_id": 0})
+    data = col.find_one({}, {"_id": 0}, sort=[("Time", -1)])
 
     if data is None:
         return {}
-    data = {'Plan_date': data.get('Date'), 'Plan_name': data.get(
-        'Name'), 'Plan_note': data.get('Note')}
+    data = {'Time': data.get('Time'), 'Site': data.get(
+        'Site'), 'Note': data.get('Note')}
+
     return data
 
 
@@ -264,23 +286,23 @@ def background_threads():
     while True:
         c = 0
         TotalData = {}
+
         socket.sleep(3)
+
         for i in db.list_collection_names():
+
             if re.search('Texel'.lower(), i.lower()):
 
                 continue
             if re.search('Vacha'.lower(), i.lower()):
                 continue
-            if re.search("mollerup", i.lower()) or re.search("jyderup", i.lower()):
+            # or re.search("jyderup", i.lower()):
+            if re.search("mollerup", i.lower()) or re.search("gelsted", i.lower()):
                 site, data = get_info(i)
-
-                TotalData[site] = data
-           # if c >= 3:
-
-            # break
+                datas = dict(data, **lookup_db_for_notes(i))
+                TotalData[site] = datas
+            
             c += 1
-
-        print(TotalData)
 
         socket.emit("table", TotalData)
 

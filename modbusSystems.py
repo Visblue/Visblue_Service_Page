@@ -3,21 +3,21 @@ from pymodbus.payload import BinaryPayloadDecoder
 from pymodbus.constants import Endian
 from datetime import datetime 
 
-Alarmkoder = {"0000000000000010 ": 'CPLD_Alarm',
+Alarmkoder = {"0000000000000010 ": 'CPLD',
               "0000000000000100 ": 'DetectNoEM',
               "0000000000001000 ": 'BlockedStack',
               "0000000000010000 ": 'State Error',
-              "0000000000100000 ": 'Tankpressurerelief_Alarm',
-              "0000000001000000 ": 'DataValid_Alarm',
-              "0000000010000000 ": 'OCVsensor_Alarm',
-              "0000000100000000 ": 'IOboardComm_Alarm',
-              "0000001000000000 ": 'Pressure_Alarm',
+              "0000000000100000 ": 'Tankpressurerelief',
+              "0000000001000000 ": 'DataValid',
+              "0000000010000000 ": 'OCVsensor',
+              "0000000100000000 ": 'IOboardComm',
+              "0000001000000000 ": 'Pressure',
               "0000010000000000 ": 'ElectrolyteTankimbalance',
               "0000100000000000 ": 'Tankpressure',
               "0001000000000000 ": 'Emergency stop',
               "0010000000000000 ": 'Leak_Alarm',
-              "0100000000000000 ": 'ElectrolyteTemp_Alarm',
-              "1000000000000000 ": 'DiffPressure Alarm', }
+              "0100000000000000 ": 'ElectrolyteTemp',
+              "1000000000000000 ": 'DiffPressure', }
 
 def convertAlarmCode(Alarm_CODE):
     pos = []
@@ -105,6 +105,8 @@ class MODBUS(object):
     def fronius_symo_ACPower(self):
         return decode_float(self.client.read_holding_registers(40095,2,self.UNIT_ID).registers)
     
+    def smartlogger_ACPower(self):
+        return decode_float(self.client.read_holding_registers(20,2,self.UNIT_ID).registers)
 
 class EnergyMeter_conn(MODBUS):
     def __init__(self, ip_address, port, unit_id, system_info):   
@@ -116,16 +118,20 @@ class EnergyMeter_conn(MODBUS):
 
 
     def em_read_power(self):
-        self.power = None
-        if self.system_info == "siemens":
-            self.power =self.siemens_ACPower()
-        if self.system_info == 'carlo':            
-            self.power =self.carlo_ACPower()
-        if self.system_info == 'server':
-            self.power =self.server_ACPower()
-        print("EM: ", self.power)
-        return self.power
-   
+        try:
+            self.power = None
+            if self.system_info == "siemens":
+                self.power =self.siemens_ACPower()
+            if self.system_info == 'carlo':            
+                self.power =self.carlo_ACPower()
+            if self.system_info == 'server':
+                self.power =self.server_ACPower()
+            print("EM: ", self.power)
+            return self.power
+    
+        except Exception as e:
+            print(f"Error reading Energy Meter data: {e}")
+            return "error"
 
   
 class PV_conn(MODBUS):
@@ -138,21 +144,26 @@ class PV_conn(MODBUS):
 
     
     def pv_read_power(self):
-        print("PV systeminfo:", self.system_info)
-        self.power = None
-        if self.system_info == "siemens":
-            self.power =  self.siemens_ACPower()
-        if self.system_info == 'carlo':
-            self.power= self.carlo_ACPower()
-        if self.system_info == 'server':
-            self.power= self.server_ACPower()
-        if self.system_info == 'fronius_eco':            
-            self.power= self.fronius_eco_ACPower()
-        if self.system_info == 'fronius_symo':
-            self.power= self.fronius_symo_ACPower()
-        print("PV: ", self.power)
-        return self.power
-
+        try:
+            print("PV systeminfo:", self.system_info)
+            self.power = None
+            if self.system_info == "siemens":
+                self.power =  self.siemens_ACPower()
+            if self.system_info == 'carlo':
+                self.power= self.carlo_ACPower()
+            if self.system_info == 'server':
+                self.power= self.server_ACPower()
+            if self.system_info == 'fronius_eco':            
+                self.power= self.fronius_eco_ACPower()
+            if self.system_info == 'fronius_symo':
+                self.power= self.fronius_symo_ACPower()
+            if self.system_info.lower() == 'smartlogger':
+                self.power= self.smartlogger_ACPower()
+            print("PV: ", self.power)
+            return self.power
+        except Exception as e:
+            print(f"Error reading PV data: {e}")
+            return "error"
 
 class Battery_conn(MODBUS):
     def __init__(self, ip, port, unit_id):
@@ -165,11 +176,19 @@ class Battery_conn(MODBUS):
 
 
     def battery_read_data(self):        
-        self.battery_data = self.client.read_holding_registers(0,30,1).registers 
+        try:
+            self.battery_data = self.client.read_holding_registers(0,30,1).registers 
+        except Exception as e:
+            print(f"Error reading battery data: {e}")
+            return "error"
         
     def battery_read_ACPower(self):
-        decoder     =  BinaryPayloadDecoder.fromRegisters(self.client.read_holding_registers(12, 3, 1).registers, byteorder=Endian.BIG, wordorder=Endian.LITTLE)       
-        return sum(decoder.decode_16bit_int() for _ in range(3))
+        try:
+            decoder     =  BinaryPayloadDecoder.fromRegisters(self.client.read_holding_registers(12, 3, 1).registers, byteorder=Endian.BIG, wordorder=Endian.LITTLE)       
+            return sum(decoder.decode_16bit_int() for _ in range(3))
+        except Exception as e:
+            print(f"Error reading battery ACPower: {e}")
+            return "error"
 
     def battery_read_actual_charge_setpoint(self):
         return self.battery_data[22]
