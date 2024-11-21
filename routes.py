@@ -4,8 +4,9 @@ import pymongo
 import os
 import pandas as pd
 from flask import render_template, request, Blueprint
-
-
+from pymodbus.client import ModbusTcpClient
+import time
+import re 
 main_blueprint = Blueprint('main', __name__)
 client = pymongo.MongoClient(f"mongodb://172.20.33.163:27017")
 db = client["error_log"]
@@ -48,6 +49,8 @@ def fejloversigt():
     return render_template("fejloversigt.html", siteErrorData=all_data)
 
 
+
+db_sites = client['Systems']
 @main_blueprint.route('/reset', methods=['POST'])
 def reset_battery():
     form_data = request.form  # For POST
@@ -55,37 +58,39 @@ def reset_battery():
     print("form_data:", form_data)  # Debug POST data
     print("query_data:", query_data)  # Debug GET data
 
-    power_input = request.form.get('powerInput')  # Safely access form data
-    print("powerInput:", power_input)
+    site = request.form.get('powerInput')  # Safely access form data  
+    found = False
+    for i in db_sites.list_collection_names():
+        if re.search(site, i):
+            data = db_sites[i].find_one()
+            IP = data.get('PLC')
+            port = data.get('Port', 502)
+            found = True
+            break
 
-    return "Success"
+    if not found:
+        return "Site not found"
+    
+    plc_client = ModbusTcpClient(str(IP), port=port)
+    if not plc_client.is_socket_open():
+        plc_client.connect()
+    
+    # Perform PLC reset sequence
+    if plc_client.read_holding_registers(26, 1, 1).registers != 1:
+        plc_client.write_register(26, 1, 1)
+    time.sleep(2)
+    plc_client.write_register(27, 1, 1)
+    time.sleep(5)
+    plc_client.write_register(27, 0, 1)
+    plc_client.write_register(26, 0, 1)
 
-    """
-    try:
-        plc_client = ModbusTcpClient(str(IP), port=port)
-        if not plc_client.is_socket_open():
-            plc_client.connect()
-        
-        # Perform PLC reset sequence
-        if plc_client.read_holding_registers(26, 1, 1).registers != 1:
-            plc_client.write_register(26, 1, 1)
-        time.sleep(2)
-        plc_client.write_register(27, 1, 1)
-        time.sleep(5)
-        plc_client.write_register(27, 0, 1)
-        plc_client.write_register(26, 0, 1)
+    if plc_client.is_socket_open():
+        plc_client.close()
 
-        if plc_client.is_socket_open():
-            plc_client.close()
+    print(f"{site} - Restarted")
 
-        print(f"{site} - Restarted")
+    # Update restart status when the operation is completed successfully
+    
 
-        # Update restart status when the operation is completed successfully
-        restart_status[site] = "Restart completed"
-        
-    except Exception as e:
-        print(f"Error: {str(e)}")
-        # Update restart status when the operation fails
-        restart_status[site] = f"Failed - {str(e)}"
-   
-    return render_template("fejloversigt.html")"""
+
+    return "SUCCESS"

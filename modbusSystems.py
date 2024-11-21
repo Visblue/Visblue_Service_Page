@@ -27,15 +27,15 @@ def convertAlarmCode(Alarm_CODE):
         if A[i] == "1":
             pos.append(i)
 
-    res = ""
+    res = None
     poss = 0
     for i, x in Alarmkoder.items():        
         for g in range(len(A)):
             if i[g] == A[len(A)-1-g] and i[g] != "0":
-                if res == "":
-                    res += x  # + ","
+                if res == None:
+                    res = x  # + ","
                 else:
-                    res += "," + x + ","
+                    res += "," + x 
                 break
         poss += 1
     if res == "":
@@ -61,11 +61,12 @@ def decode_float( regs):
 
 
 class MODBUS(object):
-    def __init__(self, ip, port, unit_id):
+    def __init__(self,site,  ip, port, unit_id):
         
         self.IP = ip   
         self.PORT = port
         self.UNIT_ID = unit_id
+        self.site = site
 
 
         try:
@@ -86,7 +87,7 @@ class MODBUS(object):
             self.client.close()
             return True
         except Exception as e:
-            print(f"Failed : Connection {self.IP}:{self.PORT}")
+            print(f"Failed : Connection {self.site}")
             self.client.close()        
             return False             
 
@@ -109,8 +110,8 @@ class MODBUS(object):
         return decode_float(self.client.read_holding_registers(20,2,self.UNIT_ID).registers)
 
 class EnergyMeter_conn(MODBUS):
-    def __init__(self, ip_address, port, unit_id, system_info):   
-        super().__init__(ip_address, port, unit_id)
+    def __init__(self, site,  ip_address, port, unit_id, system_info):   
+        super().__init__(site,ip_address, port, unit_id)
         self.system_info = system_info.lower()  
         self.IP = ip_address
         self.PORT = port
@@ -125,8 +126,7 @@ class EnergyMeter_conn(MODBUS):
             if self.system_info == 'carlo':            
                 self.power =self.carlo_ACPower()
             if self.system_info == 'server':
-                self.power =self.server_ACPower()
-            print("EM: ", self.power)
+                self.power =self.server_ACPower()            
             return self.power
     
         except Exception as e:
@@ -135,8 +135,8 @@ class EnergyMeter_conn(MODBUS):
 
   
 class PV_conn(MODBUS):
-    def __init__(self,ip_address, port, unit_id, system_info):
-        super().__init__(ip_address, port, unit_id)
+    def __init__(self,site, ip_address, port, unit_id, system_info):
+        super().__init__(site, ip_address, port, unit_id)
         self.system_info = system_info.lower()
         self.IP = ip_address
         self.PORT = port
@@ -158,16 +158,16 @@ class PV_conn(MODBUS):
             if self.system_info == 'fronius_symo':
                 self.power= self.fronius_symo_ACPower()
             if self.system_info.lower() == 'smartlogger':
-                self.power= self.smartlogger_ACPower()
-            print("PV: ", self.power)
+                self.power= self.smartlogger_ACPower()       
             return self.power
         except Exception as e:
             print(f"Error reading PV data: {e}")
             return "error"
 
 class Battery_conn(MODBUS):
-    def __init__(self, ip, port, unit_id):
-        super().__init__(ip,port,1)
+    def __init__(self, site,  ip, port, unit_id):
+        super().__init__(site, ip,port,1)
+
         self.IP = ip
         self.PORT = port
         self.UNIT_ID = unit_id
@@ -211,7 +211,7 @@ class Battery_conn(MODBUS):
     def battery_read_alarm_state(self):
         if self.battery_data[1] > 0:
             return convertAlarmCode(self.battery_data[1])
-        return 'OK'
+        return 0
         #return self.battery_data[1]
 
     def battery_read_temperature(self):
@@ -220,7 +220,7 @@ class Battery_conn(MODBUS):
     def battery_read_control_reg(self):
         return self.battery_data[26]
     def battery_current_control(self):
-        print(int(self.battery_read_control_reg()))
+        print("CONTROL: ", int(self.battery_read_control_reg()), self.IP, self.battery_read_ACPower())
         control_modes = {0: 'EM Control', 1: 'Smartflow', 2: 'Auto'} 
         return control_modes.get(int(self.battery_read_control_reg()), 'Unknown control')  
     

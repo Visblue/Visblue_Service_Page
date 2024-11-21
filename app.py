@@ -1,5 +1,8 @@
 
-
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
+from functools import partial
+import multiprocessing
 import eventlet
 from flask import Flask, render_template, request, render_template_string, jsonify, redirect, url_for, send_file
 from flask_socketio import SocketIO
@@ -23,12 +26,13 @@ thread = None
 
 app.register_blueprint(main_blueprint)
 visblueDB = MongoClient('mongodb://172.20.33.163:27017/')
-db_error_log = visblueDB['error_log']
+db_error_log = visblueDB['servicepage_alarm_time_log']
+
 
 class Visblue_main():
     def __init__(self, CUSTOMER, PROJECTNR, PLCIP, PLCPORT, EMIP, EMPORT, EMTYPE, PVIP, PVPORT, PVTYPE, PVUNITID):
-        print(CUSTOMER, PROJECTNR, PLCIP, PLCPORT, EMIP,
-              EMPORT, EMTYPE, PVIP, PVPORT, PVTYPE, PVUNITID)
+       # print(CUSTOMER, PROJECTNR, PLCIP, PLCPORT, EMIP,
+       #       EMPORT, EMTYPE, PVIP, PVPORT, PVTYPE, PVUNITID)
         # return
         self.site = CUSTOMER
         self.project_nr = PROJECTNR
@@ -44,9 +48,7 @@ class Visblue_main():
         self.pv_unitid = PVUNITID
         self.em_unitid = 1
 
-
-        self.check_for_em = False
-        self.check_for_pv = False
+  
         self.em_conn = None
         self.pv_conn = None
         self.bat_conn = None
@@ -55,117 +57,79 @@ class Visblue_main():
         self.bat_power = None
         self.smartflow = None
         self.data = {}
-        self.setup_modbus()
 
-    def setup_modbus(self):
-        self.battery = Battery_conn(self.plc_ip, self.plc_port, 1)
-        if self.em_ip is not None and self.em_type != 'DCC':
-            self.energymeter = EnergyMeter_conn(
-                self.em_ip, self.em_port, self.em_unitid, self.em_type)
-            self.check_for_em = True
+
+    def EM(self):
+        EM_power = None
+        EM_status = None
+        if self.em_ip != None:
+            if self.em_ip.lower() != 'dcc':
+                self.energymeter = EnergyMeter_conn(self.site, self.em_ip, self.em_port, self.em_unitid, self.em_type)
+                EM_Status = self.energymeter.try_connect()
+                if EM_status:
+                    EM_power = self.energymeter.em_read_power()      
+                    EM_status = 0
+                else:
+                    EM_status = -1
         else:
-            self.check_for_em = False
+            EM_status = 0
+        
+        self.data['Energy_meter_connection_status'] = EM_status
+        self.data['Energy_meter_power'] = EM_power
+      
+
+    def PV(self):
+        PV_status = None
+        PV_power = None
+        if self.pv_ip != None:
+            if  self.pv_ip.lower() == 'dcc':
+                self.pv = PV_conn(self.site, self.pv_ip, self.pv_port,
+                                self.pv_unitid, self.pv_type)
+                PV_status = self.pv.try_connect()
+                if PV_status:
+                    PV_power = self.pv.pv_read_power()
+                    PV_status = 0
+                else:
+                    PV_status = -1
+        else:
+            PV_status = 0
+        self.data['PV_connection_status'] = PV_status
+        self.data['PV_power'] = PV_power
+        
+
+    def VisblueBattery(self):
+        self.battery = Battery_conn(self.site,self.plc_ip, self.plc_port, 1)
+        self.bat_conn = self.battery.try_connect()        
+        if self.bat_conn:
+            self.get_battery_data()  
+            return True                  
+        else:
+            return False
             
-        if self.pv_ip is not None and self.pv_type != 'DCC':
-            self.pv = PV_conn(self.pv_ip, self.pv_port,
-                              self.pv_unitid, self.pv_type)
-            self.check_for_pv = True
-        else:
-            self.check_for_pv = False
-
-    def __check_em_connection(self):
-        if self.em_ip is not None and self.em_conn != 'DCC':
-            self.em_conn = self.energymeter.try_connect()
-        else:
-            self.em_conn = True
-        self.data['EM_connection_status'] = self.em_conn
-
-    def __check_pv_connection(self):
-        if self.smartflow is not None:
-            if self.pv_ip != 'DCC':
-                self.pv_conn = self.pv.try_connect()
-            else:
-                self.pv_conn = "Data_missing"
-        else:
-            self.pv_conn = True
-        self.data['PV_connection_status'] = self.pv_conn
-
-    def __check_battery_connection(self):
-        self.bat_conn = self.battery.try_connect()
-        self.data['Battery_connection_status'] = self.bat_conn
 
 
     def get_battery_data(self):
-        self.battery.battery_read_data()
+        control_modes = {0: 'EM Control', 1: 'Smartflow', 2: 'Auto'}    
+        self.battery.battery_read_data()            
         self.data['Project_nr'] = self.project_nr
         self.data['Battery_ACPower'] = self.battery.battery_read_ACPower()
         self.data['Battery_Charge_Setpoint'] = self.battery.battery_read_charge_setpoint()
         self.data['Battery_Discharge_Setpoint'] = self.battery.battery_read_discharge_setpoint()
         self.data['Battery_State_of_Charge'] = self.battery.battery_read_soc()
         self.data['Battery_state'] = self.battery.battery_read_battery_state()
-        self.data['Battery_Alarm_State'] = None
+        self.data['Battery_Alarm_State'] = self.battery.battery_read_alarm_state()
         self.data['Battery_Temperature'] = self.battery.battery_read_temperature()
         # self.data['Battery_frozen']                         = self.battery.battery_check_frozen()
         self.data['Battery_Setpoint_error'] = self.battery.battery_check_setpoint()
-        self.data['Battery_control'] = self.battery.battery_current_control()
-        self.bat_power = self.battery.battery_read_ACPower()
+        self.data['Battery_control'] = control_modes.get(int(self.battery.battery_read_control_reg()), 'Unknown control') #self.battery_current_control(
+            #self.battery.battery_read_control_reg())
+        self.battery_power = self.battery.battery_read_ACPower()
+        self.driftsikring()
 
-    def get_em_data(self):
-        self.em_power = self.energymeter.em_read_power()
-        self.data['Energymeter_ACPower'] = self.em_power
-
-    def get_pv_data(self):
-        self.pv_power = self.pv.pv_read_power()
-        self.data['PV_ACPower'] = self.pv_power
-
-    def add_errors_to_data(self):
-        self.fontEnd_status_color = 'white'
-        self.__check_battery_error()
-        self.__check_em_error()
-        if self.smartflow != False and self.pv_conn:
-            self.__check_pv_error()
-            self.__check_MYP()
-
-        self.data["Battery_Alarm_Color"] = self.fontEnd_status_color
-
-    def __check_MYP(self):
-        #self.get_em_data()
-        #self.get_pv_data()
-        if self.calculate_consumption() is not None:
-            if self.calculate_consumption() < 0:
-                if self.data['Battery_Alarm_State'] != None:
-                    self.data['Battery_Alarm_State'] += ',MYP_Cons_Error'
-                self.fontEnd_status_color = "red"
-
-    def __check_pv_error(self):
-
-        if self.smartflow or int(self.battery.battery_read_control_reg()) == 1:
-            if not self.pv_conn:
-                if self.data.get('Battery_Alarm_State') != None:
-                    self.data['Battery_Alarm_State'] += ", DetectNoPV"
-                self.fontEnd_status_color = "red"
-
-    def __check_em_error(self):
-        if not self.em_conn:
-            if self.data.get('Battery_Alarm_State') != None:
-                self.data['Battery_Alarm_State'] += ", DetectNoEM"
-            else:
-                self.data['Battery_Alarm_State'] = "DetectNoEM"
-            self.fontEnd_status_color = "red"
-
-    def __check_battery_error(self):
-        if self.battery.battery_read_alarm_state() != 'OK':
-            self.data['Battery_Alarm_State'] = self.battery.battery_read_alarm_state()
-            self.fontEnd_status_color = "red"
-
-    def calculate_consumption(self):
-        consumption = None
-        if self.em_conn and self.pv_conn:
-            consumption = self.em_power - self.pv_power + self.bat_power
-        self.data['Consumption'] = consumption
-        return consumption
-
+    
     def driftsikring(self):
+        if re.search("visblue", self.site.lower()):
+            return
         from Driftsikring import driftsikring
         datas = driftsikring(float(self.project_nr))
         self.data['Signed_date'] = datas.get('Signed_date', "")
@@ -176,24 +140,20 @@ class Visblue_main():
         self.data['DA_nr'] = datas.get('DA_nr', "")
         self.data['SA_nr'] = datas.get('SA_nr', "")
         self.smartflow = datas.get('SA_nr', False)
-
-    def dataplotter(self):
-        self.data['Dataplotter'] = "http://" + \
-            self.bat_ip + "/dataplotter/dataplotter.html"
-
-
+    """
     def __update_get_collections(self):
-            self.col = None
-            self.add_new = False
-            col_found = False
-            for i in db_error_log.list_collection_names():          
-                if re.search(i.lower(), self.site.lower()):
-                    self.col = db_error_log[i]
-                    col_found = True
-                    break       
-            if not col_found:
-                self.col = db_error_log[self.site]            
-                self.add_new = True
+        self.col = None
+        self.add_new = False
+        col_found = False
+        for i in db_error_log.list_collection_names():
+            if re.search(i.lower(), self.site.lower()):
+                self.col = db_error_log[i]
+                col_found = True
+                break
+        if not col_found:
+            self.col = db_error_log[self.site]
+            self.add_new = True
+
     def update_database_error_log(self):
         self.__update_get_collections()
 
@@ -201,43 +161,144 @@ class Visblue_main():
             "Kunde": self.site,
             'ProjectNr': self.project_nr,
         }
-        update_data = {
-            "$set": {
-                "Kunde": self.site,
-                "Em_connection_status": self.em_conn,
-                "Pv_connection_status": self.pv_conn,
-                "battery_connection_status": self.bat_conn,
-                "battery_alarm_status": self.battery.battery_read_alarm_state(),
-                'ProjectNr': self.project_nr,
-                "Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            }
-        }
+        if self.bat_conn is None:
+            alarmStatus = 'Offline'
+        else:
+            alarmStatus = self.battery.battery_read_alarm_state()
+        
         db_current_data = self.col.find_one({}, query)
+
         if db_current_data is None:
             self.add_new = True
         if self.col is not None:
-            self.col.update_one(query, update_data, upsert=self.add_new)
+            db_current_data['Battery_status'].lower() != alarmStatus.lower()
+            alarmStatus = db_current_data['Battery_status'] + ", " + alarmStatus
 
+        data_to_update = {
+            "Kunde": self.site,                
+            "Battery_status": alarmStatus,
+            'ProjectNr': self.project_nr,
+            "Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        update_data = {
+            "$set": data_to_update
+        }
+       
+        self.col.update_one(query, update_data, upsert=self.add_new)
+"""
+
+    def __update_get_collections(self):
+        self.col = None
+        self.add_new = False
+        col_found = False
+        for i in db_error_log.list_collection_names():
+            if re.search(i.lower(), self.site.lower()):
+                self.col = db_error_log[i]
+                col_found = True
+                break
+        if not col_found:
+            self.col = db_error_log[self.site]
+            self.add_new = True
+
+    def update_database_error_log(self):
+        self.__update_get_collections()
+
+        query = {
+            "Kunde": self.site,
+            'ProjectNr': self.project_nr,
+        }
+
+        
+        # Bestem alarmstatus
+        if self.bat_conn is None:
+            alarmStatus = 'Offline'
+        else:
+            
+            alarmStatus = status = "OK" if self.data['Battery_Alarm_State'] == 0 else self.data['Battery_Alarm_State']
+
+
+        db_current_data = self.col.find_one(query)
+
+        if db_current_data is None:
+            
+            data_to_update = {
+                "Kunde": self.site,
+                "Battery_status": alarmStatus,
+                'ProjectNr': self.project_nr,
+                "Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }
+            self.col.insert_one(data_to_update)
+        else:
+            # Fejlen eksisterer allerede
+            existing_status = db_current_data.get('Battery_status', '')
+            existing_time = db_current_data.get('Time')
+            self.data['Alarm_registred'] = existing_time
+            if alarmStatus.lower() not in existing_status.lower():
+                if alarmStatus.lower() =='offline':
+                    data_to_update = {
+                        "Kunde": self.site,
+                        "Battery_status": alarmStatus,
+                        'ProjectNr': self.project_nr,
+                        "Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    }
+                    self.col.insert_one(data_to_update)
+
+
+                # Ny fejl tilfjes til den eksisterende liste
+                updated_status = f"{existing_status}, {alarmStatus}" if existing_status else alarmStatus
+                data_to_update = {
+                    "Battery_status": updated_status,
+                }
+
+                # Hvis der ikke er nogen rettelser endnu, behold den originale tid
+                if "Time_resolved" not in db_current_data:
+                    data_to_update["Time"] = existing_time
+                    self.data['Alarm_registred'] = existing_time
+
+                update_data = {
+                    "$set": data_to_update
+                }
+                self.col.update_one(query, update_data)
+            elif alarmStatus.lower() == "ok" and "Time_resolved" not in db_current_data:
+                # Fejl rettet - tilfj tid for rettelse
+                update_data = {
+                    "$set": {
+                        "Battery_status": alarmStatus,
+                        "Time_resolved": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    }
+                }
+                self.col.update_one(query, update_data)
+            
     def run(self):
-        self.__check_battery_connection()
-        if self.check_for_em:
-            self.__check_em_connection()        
-        if self.check_for_pv:
-            self.__check_pv_connection()
-                    
+        if self.VisblueBattery():
+            self.EM()
+            self.PV()        
+        else:
+            self.data['Battery_Alarm_State'] = "Offline"
+            self.data['Project_nr'] = self.project_nr
+            self.driftsikring()
+
+        self.update_database_error_log()
+
+       # if self.bat_conn:
+       #    self.EM()
+       #    self.PV()
+       #    self.check_for_system_error()
+       #    self.driftsikring()
+     #   self.data['Battery_Alarm_State'] = 'Offline'
+
+        """
+
         if self.bat_conn:
             self.get_battery_data()
             if self.em_conn:
-                self.get_em_data()            
+                self.get_em_data()
             if self.pv_conn:
                 self.get_pv_data()
-            self.driftsikring()          
+            self.driftsikring()
             self.add_errors_to_data()
-        self.update_database_error_log()
-      #  print(self.data)
-        return
-        self.gather_battery_data()
-        self.calculate_consumption()
+            self.update_database_error_log()
+"""
 
 
 info = MongoClient('mongodb://172.20.33.151:27018/')
@@ -274,7 +335,6 @@ def get_info(col_name):
     data = col.find_one({}, {"_id": 0})
 
     for i in data:
-
         site = Visblue_main(CUSTOMER=col_name, PROJECTNR=data[i].get('Project_nr', 99999), PLCIP=data[i].get('Battery_ip', None), PLCPORT=data[i].get('Battery_port', 502), EMIP=data[i].get('Em_ip', "DCC"), EMPORT=data[i].get('Em_port', 502), EMTYPE=data[i].get('Em_type', "None"),
                             PVIP=data[i].get('Pv_ip', "DCC"), PVPORT=data[i].get('Pv_port', "DCC"), PVTYPE=data[i].get('Pv_type', "None"), PVUNITID=data[i].get('PV_unit_id', 1))
         site.run()
@@ -282,29 +342,100 @@ def get_info(col_name):
     return i, site.data
 
 
+# Function to handle the processing for each collection
+
+
+def process_collection(i, db, TotalData):
+    site, data = get_info(i)
+    datas = dict(data, **lookup_db_for_notes(i))
+
+    # Thread-safe update of the shared dictionary
+    with TotalData_lock:
+        TotalData[site] = datas
+
+    # Add a small delay (e.g., 10 milliseconds) after each processing
+    time.sleep(1)  # Delay for 10 milliseconds
+
+    return site, datas  # Return the site and data for sending once done
+
+# Function to initialize threading
+
+
+def process_collections(db):
+    # Initialize a manager to handle shared data
+    TotalData = {}
+    # Lock to ensure thread-safe access to TotalData
+    global TotalData_lock
+    TotalData_lock = threading.Lock()
+
+    # Create a partial function to pass `db` and `TotalData` to the worker function
+    process_func = partial(process_collection, db=db, TotalData=TotalData)
+
+    # Get the collection names from the database
+    collection_names = db.list_collection_names()
+
+    # Use ThreadPoolExecutor to handle the threads
+    with ThreadPoolExecutor(max_workers=10) as executor:  # Max workers set to 10
+        # Submit each collection to be processed in a separate thread
+        futures = [executor.submit(process_func, name) for name in collection_names]
+
+        # To collect completed results
+        completed_results = []
+
+        # Process results as they come in (as each thread completes)
+        for future in as_completed(futures):
+            site, datas = future.result()  # Get the result of the completed thread
+
+            # Append result to completed_results
+            completed_results.append((site, datas))
+
+            # Once we have 10 results, send them and wait for 5 seconds
+            if len(completed_results) == 3:
+                # Send/Process the batch of 10 results
+                #print(f"Sending batch of 10: {completed_results[0]}")
+                # Here you can send the batch to your desired destination
+                socket.emit("table", dict(completed_results))
+                # Example: send_batch(completed_results)
+
+                # Wait for 5 seconds before continuing
+                socket.sleep(4)
+
+                # Clear the completed results for the next batch
+                completed_results.clear()
+
+        # If there are any remaining results less than 10 after all threads are done
+        if completed_results:
+            #print(f"Sending final batch: {completed_results}")
+            socket.emit("table", dict(completed_results))
+            # Example: send_batch(completed_results)
+
+    # Return the shared TotalData dictionary after processing is done
+    return TotalData
+
+
 def background_threads():
     while True:
         c = 0
         TotalData = {}
+        socket.sleep(1)
+        while True: #for i in db.list_collection_names():
+            process_collections(db)
 
-        socket.sleep(3)
-
-        for i in db.list_collection_names():
-
-            if re.search('Texel'.lower(), i.lower()):
-
-                continue
-            if re.search('Vacha'.lower(), i.lower()):
-                continue
+            # if re.search('Texel'.lower(), i.lower()):
+            # continue
+            # if re.search('Vacha'.lower(), i.lower()):
+            # continue
             # or re.search("jyderup", i.lower()):
-            if re.search("mollerup", i.lower()) or re.search("gelsted", i.lower()):
-                site, data = get_info(i)
-                datas = dict(data, **lookup_db_for_notes(i))
-                TotalData[site] = datas
-            
+            # if re.search("skovvang", i.lower()):#or re.search("moccamaster", i.lower()):
+            #    site, data = get_info(i)
+            #    datas = dict(data, **lookup_db_for_notes(i))
+            #    TotalData[site] = datas
+            #
             c += 1
+            if c == 10:
+                break
 
-        socket.emit("table", TotalData)
+        #socket.emit("table", TotalData)
 
 
 db_VisblueService = "VisblueService"
