@@ -59,6 +59,7 @@ function add_dataplotter(key, dataplotter) {
 	return dataplotterLink;
 }
 
+
 function add_note_area(key, key_without_spaces, noteData) {
 	noteBtn = document.createElement("textarea");
 	noteBtn.type = "text";
@@ -126,6 +127,141 @@ function check_status(bat_alarm, bat_state, PV_conn, EM_conn) {
 	console.log("Status: ", status, "Color: ", statusColor);
 	return { status: status, statusColor: statusColor,  'opacity' : 1, };
 }
+
+
+function add_datas(msg) {
+    const table = document.getElementById("tables"); // Replace with your actual table's tbody ID
+
+    // Iterate over each key in the msg object
+    for (let key in msg) {
+        key_without_spaces = key.replace(/\s+/g, "_"); // With spaces it will be hard for the js to find out which key is used.
+        const newRow = document.createElement("tr");
+
+        // Create new cells
+        const prio_td = document.createElement("td");
+        const site_td = document.createElement("td");
+        const nr_td = document.createElement("td");
+        const statud_td = document.createElement("td");
+        const power_td = document.createElement("td");
+        const soc_td = document.createElement("td");
+        const control_td = document.createElement("td");
+        const note_btn_td = document.createElement("td");
+        const signed_td = document.createElement("td");
+        const DASA_td = document.createElement("td");
+        const planning_td = document.createElement("td");
+        const reset_btn_td = document.createElement("td");
+
+        form_reset = add_reset_btn(key, key_without_spaces);
+        noteBtn = add_note_area(key, key_without_spaces, msg[key]["Note"]);
+
+        var status = check_status(msg[key]["Battery_Alarm_State"], msg[key]["Battery_state"], msg[key]["PV_connection_status"], msg[key]["Energy_meter_connection_status"]);
+        var showStatus = status.status == undefined ? "<b style='font-size:38px; color:#0fdc3c'; class='bi bi-check2'> </b>" : "<b style='font-size:25; color:" + status.statusColor + "';> " + status.status + " <i style='font-size:14px; color:white; opacity:" + status.opacity + ";'>[" + msg[key]["Alarm_registred"] + "] </i>";
+        
+        var smartFlow = msg[key]["Battery_control"] == "Smartflow" ? "<p style='color:white;' >" + msg[key]["Battery_control"] + " <i style='color:#37dc0f;' class='fa fa-leaf'></i>" + " </p>" : "<p style='color:white;'>" + msg[key]["Battery_control"] + "</p>";
+
+        var showPrioritet = msg[key]["Site_prioritet"] == 1 ? "<b style='color:red;'>&nbsp; [" +  msg[key]["Site_prioritet"] + "]</b>" : "<b style='color:white;'>&nbsp; [" +  (msg[key]["Site_prioritet"] || 9) + "]</b>";
+        
+        var showProjectNr = (msg[key]["Project_nr"] == undefined || msg[key]["Project_nr"] == null || msg[key]["Project_nr"] == "-") ? 99999 : msg[key]["Project_nr"];
+
+        newRow.classList.add("textClass");
+
+        nr_td.innerHTML = showProjectNr;
+        nr_td.style.textAlign = "right";
+        site_td.innerHTML = "&nbsp; " + key || "&nbsp; N/A ";
+        prio_td.innerHTML = showPrioritet;
+        statud_td.innerHTML = showStatus;
+        power_td.innerHTML = msg[key]["Battery_ACPower"] || 0;
+        soc_td.innerHTML = msg[key]["Battery_State_of_Charge"] || 0;
+        control_td.innerHTML = smartFlow;
+        signed_td.innerHTML = (msg[key]["Signed_date"] || "N/A") + "<br>" + (msg[key]["Signed_time"] || "N/A");
+        DASA_td.innerHTML = (msg[key]["DA_nr"] || "") + " / " + (msg[key]["SA_nr"] || "");
+		prio_td.classList.add("prio_td"); // Tilføj denne linje i din add_data-funktion
+
+        nr_td.style.opacity = status.opacity;
+        site_td.style.opacity = status.opacity;
+        prio_td.style.opacity = status.opacity;
+        signed_td.style.opacity = status.opacity;
+        DASA_td.style.opacity = status.opacity;
+        planning_td.style.opacity = status.opacity;
+        control_td.style.opacity = status.opacity;
+        power_td.style.opacity = status.opacity;
+        soc_td.style.opacity = status.opacity;
+        reset_btn_td.style.opacity = status.opacity;
+
+        // Append the new row to the table
+        newRow.appendChild(prio_td);
+        newRow.appendChild(nr_td);
+        newRow.appendChild(site_td);
+        newRow.appendChild(statud_td);
+        newRow.appendChild(power_td);
+        newRow.appendChild(soc_td);
+        newRow.appendChild(control_td);
+        note_btn_td.appendChild(noteBtn);
+        newRow.appendChild(note_btn_td);
+        newRow.appendChild(signed_td);
+        newRow.appendChild(DASA_td);
+        reset_btn_td.appendChild(form_reset);
+        newRow.appendChild(reset_btn_td);
+
+        table.appendChild(newRow);
+    }
+}
+
+
+function sortTable(n) {
+	var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+	table = document.getElementById("tables");
+	switching = true;
+	// Set the sorting direction to ascending:
+	dir = "asc";
+	/* Make a loop that will continue until
+	no switching has been done: */
+	while (switching) {
+	  // Start by saying: no switching is done:
+	  switching = false;
+	  rows = table.rows;
+	  /* Loop through all table rows (except the
+	  first, which contains table headers): */
+	  for (i = 1; i < (rows.length - 1); i++) {
+		// Start by saying there should be no switching:
+		shouldSwitch = false;
+		/* Get the two elements you want to compare,
+		one from current row and one from the next: */
+		x = rows[i].getElementsByTagName("TD")[n];
+		y = rows[i + 1].getElementsByTagName("TD")[n];
+		/* Check if the two rows should switch place,
+		based on the direction, asc or desc: */
+		if (dir == "asc") {
+		  if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+			// If so, mark as a switch and break the loop:
+			shouldSwitch = true;
+			break;
+		  }
+		} else if (dir == "desc") {
+		  if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+			// If so, mark as a switch and break the loop:
+			shouldSwitch = true;
+			break;
+		  }
+		}
+	  }
+	  if (shouldSwitch) {
+		/* If a switch has been marked, make the switch
+		and mark that a switch has been done: */
+		rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+		switching = true;
+		// Each time a switch is done, increase this count by 1:
+		switchcount ++;
+	  } else {
+		/* If no switching has been done AND the direction is "asc",
+		set the direction to "desc" and run the while loop again. */
+		if (switchcount == 0 && dir == "asc") {
+		  dir = "desc";
+		  switching = true;
+		}
+	  }
+	}
+  }
 
 function add_data(msg) {
 	const table = document.getElementById("tables"); // Replace with your actual table's tbody ID
@@ -304,41 +440,15 @@ function add_data(msg) {
 			table.appendChild(newRow);
 		}
 	}
-}function sortTable(columnIndex) {
-    const table = document.getElementById("tables");
-    const rows = Array.from(table.rows).slice(1);  // Skip the header row
-    const ascending = table.querySelector(`th:nth-child(${columnIndex + 1})`).classList.contains('ascending');
-    
-    // Sort rows based on the column
-    rows.sort((rowA, rowB) => {
-        const cellA = rowA.cells[columnIndex].innerText;
-        const cellB = rowB.cells[columnIndex].innerText;
-
-        // Convert cell values to numbers for numerical sorting
-        const valueA = isNaN(cellA) ? cellA : parseFloat(cellA);
-        const valueB = isNaN(cellB) ? cellB : parseFloat(cellB);
-
-        // Compare based on the column type (numeric or string)
-        if (valueA < valueB) {
-            return ascending ? -1 : 1;
-        }
-        if (valueA > valueB) {
-            return ascending ? 1 : -1;
-        }
-        return 0;
-    });
-
-    // Append sorted rows back to the table
-    rows.forEach(row => table.appendChild(row));
-
-    // Toggle the sort direction class for the clicked header
-    table.querySelectorAll('th').forEach(th => th.classList.remove('ascending', 'descending'));
-    const header = table.querySelector(`th:nth-child(${columnIndex + 1})`);
-    header.classList.add(ascending ? 'descending' : 'ascending');
 }
+
+
 
 socket.on("table", function (msg) {
 	console.log("Table data received: ", msg);
 	// Add the received data to the table
 	add_data(msg);
+	
 });
+
+

@@ -2,6 +2,8 @@ import pandas as pd
 import os
 from datetime import datetime
 
+
+
 def driftsikring_csv():
         #folder = "/volume1/homes/admin/Downloads/"    
         folder = "C:/Users/FarhadAnayati/VisBlue/VisBlue all - Dokumenter/Product Development/Serviceside"    
