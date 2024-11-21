@@ -304,6 +304,37 @@ function add_data(msg) {
 			table.appendChild(newRow);
 		}
 	}
+}function sortTable(columnIndex) {
+    const table = document.getElementById("tables");
+    const rows = Array.from(table.rows).slice(1);  // Skip the header row
+    const ascending = table.querySelector(`th:nth-child(${columnIndex + 1})`).classList.contains('ascending');
+    
+    // Sort rows based on the column
+    rows.sort((rowA, rowB) => {
+        const cellA = rowA.cells[columnIndex].innerText;
+        const cellB = rowB.cells[columnIndex].innerText;
+
+        // Convert cell values to numbers for numerical sorting
+        const valueA = isNaN(cellA) ? cellA : parseFloat(cellA);
+        const valueB = isNaN(cellB) ? cellB : parseFloat(cellB);
+
+        // Compare based on the column type (numeric or string)
+        if (valueA < valueB) {
+            return ascending ? -1 : 1;
+        }
+        if (valueA > valueB) {
+            return ascending ? 1 : -1;
+        }
+        return 0;
+    });
+
+    // Append sorted rows back to the table
+    rows.forEach(row => table.appendChild(row));
+
+    // Toggle the sort direction class for the clicked header
+    table.querySelectorAll('th').forEach(th => th.classList.remove('ascending', 'descending'));
+    const header = table.querySelector(`th:nth-child(${columnIndex + 1})`);
+    header.classList.add(ascending ? 'descending' : 'ascending');
 }
 
 socket.on("table", function (msg) {

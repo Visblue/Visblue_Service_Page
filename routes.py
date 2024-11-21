@@ -58,7 +58,7 @@ def reset_battery():
     print("form_data:", form_data)  # Debug POST data
     print("query_data:", query_data)  # Debug GET data
 
-    site = request.form.get('powerInput')  # Safely access form data  
+    site = request.form.get('site')  # Safely access form data  
     found = False
     for i in db_sites.list_collection_names():
         if re.search(site, i):

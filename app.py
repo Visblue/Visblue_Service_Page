@@ -239,19 +239,24 @@ class Visblue_main():
             }
             self.col.insert_one(data_to_update)
         else:
+            if alarmStatus.lower() == 'offline':
+            # Update existing document with new time and state
+                    offline_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    update_data = {
+                        "$set": {
+                            "Battery_status": alarmStatus,
+                            "Time": offline_time
+                        }
+                    }
+                    self.col.update_one(query, update_data)
+                    self.data['Alarm_registred'] = offline_time
+                    return
             # Fejlen eksisterer allerede
             existing_status = db_current_data.get('Battery_status', '')
             existing_time = db_current_data.get('Time')
             self.data['Alarm_registred'] = existing_time
             if alarmStatus.lower() not in existing_status.lower():
-                if alarmStatus.lower() == 'offline':
-                    data_to_update = {
-                        "Kunde": self.site,
-                        "Battery_status": alarmStatus,
-                        'ProjectNr': self.project_nr,
-                        "Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    }
-                    self.col.insert_one(data_to_update)
+                
 
                 # Ny fejl tilfjes til den eksisterende liste
                 updated_status = f"{existing_status}, {alarmStatus}" if existing_status else alarmStatus
@@ -356,7 +361,7 @@ def process_collection(i, db, TotalData):
         TotalData[site] = datas
 
     # Add a small delay (e.g., 10 milliseconds) after each processing
-    time.sleep(1)  # Delay for 10 milliseconds
+    time.sleep(0.2)  # Delay for 10 milliseconds
 
     return site, datas  # Return the site and data for sending once done
 
@@ -401,7 +406,7 @@ def process_collections(db):
                 # Example: send_batch(completed_results)
 
                 # Wait for 5 seconds before continuing
-                socket.sleep(2)
+                socket.sleep(1)
 
                 # Clear the completed results for the next batch
                 completed_results.clear()
@@ -421,10 +426,13 @@ def background_threads():
     while True:
         c = 0
         TotalData = {}
-        while True:
+        start = time.time()
+        #while True:
             
-            process_collections(db)
-            time.sleep(1)
+        process_collections(db)
+        end= time.time()
+        print("TIME: ", end-start)
+        time.sleep(1)
       #  while True:  # for i in db.list_collection_names():
             
            # for i in db.list_collection_names():
