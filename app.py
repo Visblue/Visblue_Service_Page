@@ -48,7 +48,6 @@ class Visblue_main():
         self.pv_unitid = PVUNITID
         self.em_unitid = 1
 
-  
         self.em_conn = None
         self.pv_conn = None
         self.bat_conn = None
@@ -58,33 +57,32 @@ class Visblue_main():
         self.smartflow = None
         self.data = {}
 
-
     def EM(self):
         EM_power = None
         EM_status = None
         if self.em_ip != None:
             if self.em_ip.lower() != 'dcc':
-                self.energymeter = EnergyMeter_conn(self.site, self.em_ip, self.em_port, self.em_unitid, self.em_type)
+                self.energymeter = EnergyMeter_conn(
+                    self.site, self.em_ip, self.em_port, self.em_unitid, self.em_type)
                 EM_Status = self.energymeter.try_connect()
                 if EM_status:
-                    EM_power = self.energymeter.em_read_power()      
+                    EM_power = self.energymeter.em_read_power()
                     EM_status = 0
                 else:
                     EM_status = -1
         else:
             EM_status = 0
-        
+
         self.data['Energy_meter_connection_status'] = EM_status
         self.data['Energy_meter_power'] = EM_power
-      
 
     def PV(self):
         PV_status = None
         PV_power = None
         if self.pv_ip != None:
-            if  self.pv_ip.lower() == 'dcc':
+            if self.pv_ip.lower() == 'dcc':
                 self.pv = PV_conn(self.site, self.pv_ip, self.pv_port,
-                                self.pv_unitid, self.pv_type)
+                                  self.pv_unitid, self.pv_type)
                 PV_status = self.pv.try_connect()
                 if PV_status:
                     PV_power = self.pv.pv_read_power()
@@ -95,22 +93,36 @@ class Visblue_main():
             PV_status = 0
         self.data['PV_connection_status'] = PV_status
         self.data['PV_power'] = PV_power
-        
 
     def VisblueBattery(self):
-        self.battery = Battery_conn(self.site,self.plc_ip, self.plc_port, 1)
-        self.bat_conn = self.battery.try_connect()        
-        if self.bat_conn:
-            self.get_battery_data()  
-            return True                  
-        else:
-            return False
-            
+        
+        if self.plc_ip != "":
+            self.battery = Battery_conn(self.site, self.plc_ip, self.plc_port, 1)
+            self.bat_conn = self.battery.try_connect()
+            if self.bat_conn:
+                self.get_battery_data()
+                return True
+            else:
+                self.data['Battery_Alarm_State'] = "Offline"
+                self.data['Project_nr'] = self.project_nr
+                self.driftsikring()
 
+                return False
+        self.data['Battery_Alarm_State'] = "ComingSoon"
+        self.data['Project_nr'] = self.project_nr
+        self.driftsikring()
+        return False
+    
+
+    def get_battery_control(self):
+        control_modes = {0: 'EM Control', 1: 'Smartflow', 2: 'Auto'}
+        if re.search('vacha', self.site.lower()) or re.search('texel', self.site.lower()) or re.search('varensdorf', self.site.lower()) or re.search('bryte', self.site.lower()):
+            return 'External Control'
+        return control_modes.get(int(self.battery.battery_read_control_reg()), 'Unknown control')
 
     def get_battery_data(self):
-        control_modes = {0: 'EM Control', 1: 'Smartflow', 2: 'Auto'}    
-        self.battery.battery_read_data()            
+        control_modes = {0: 'EM Control', 1: 'Smartflow', 2: 'Auto'}
+        self.battery.battery_read_data()
         self.data['Project_nr'] = self.project_nr
         self.data['Battery_ACPower'] = self.battery.battery_read_ACPower()
         self.data['Battery_Charge_Setpoint'] = self.battery.battery_read_charge_setpoint()
@@ -121,12 +133,12 @@ class Visblue_main():
         self.data['Battery_Temperature'] = self.battery.battery_read_temperature()
         # self.data['Battery_frozen']                         = self.battery.battery_check_frozen()
         self.data['Battery_Setpoint_error'] = self.battery.battery_check_setpoint()
-        self.data['Battery_control'] = control_modes.get(int(self.battery.battery_read_control_reg()), 'Unknown control') #self.battery_current_control(
-            #self.battery.battery_read_control_reg())
+        # control_modes.get(int(self.battery.battery_read_control_reg()), 'Unknown control') #self.battery_current_control(
+        self.data['Battery_control'] = self.get_battery_control()
+        # self.battery.battery_read_control_reg())
         self.battery_power = self.battery.battery_read_ACPower()
         self.driftsikring()
 
-    
     def driftsikring(self):
         if re.search("visblue", self.site.lower()):
             return
@@ -208,19 +220,17 @@ class Visblue_main():
             'ProjectNr': self.project_nr,
         }
 
-        
         # Bestem alarmstatus
         if self.bat_conn is None:
             alarmStatus = 'Offline'
         else:
-            
-            alarmStatus = status = "OK" if self.data['Battery_Alarm_State'] == 0 else self.data['Battery_Alarm_State']
 
+            alarmStatus = status = "OK" if self.data['Battery_Alarm_State'] == 0 else self.data['Battery_Alarm_State']
 
         db_current_data = self.col.find_one(query)
 
         if db_current_data is None:
-            
+
             data_to_update = {
                 "Kunde": self.site,
                 "Battery_status": alarmStatus,
@@ -234,7 +244,7 @@ class Visblue_main():
             existing_time = db_current_data.get('Time')
             self.data['Alarm_registred'] = existing_time
             if alarmStatus.lower() not in existing_status.lower():
-                if alarmStatus.lower() =='offline':
+                if alarmStatus.lower() == 'offline':
                     data_to_update = {
                         "Kunde": self.site,
                         "Battery_status": alarmStatus,
@@ -242,7 +252,6 @@ class Visblue_main():
                         "Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     }
                     self.col.insert_one(data_to_update)
-
 
                 # Ny fejl tilfjes til den eksisterende liste
                 updated_status = f"{existing_status}, {alarmStatus}" if existing_status else alarmStatus
@@ -268,16 +277,9 @@ class Visblue_main():
                     }
                 }
                 self.col.update_one(query, update_data)
-            
-    def run(self):
-        if self.VisblueBattery():
-            self.EM()
-            self.PV()        
-        else:
-            self.data['Battery_Alarm_State'] = "Offline"
-            self.data['Project_nr'] = self.project_nr
-            self.driftsikring()
 
+    def run(self):
+        self.VisblueBattery()                
         self.update_database_error_log()
 
        # if self.bat_conn:
@@ -377,7 +379,8 @@ def process_collections(db):
     # Use ThreadPoolExecutor to handle the threads
     with ThreadPoolExecutor(max_workers=10) as executor:  # Max workers set to 10
         # Submit each collection to be processed in a separate thread
-        futures = [executor.submit(process_func, name) for name in collection_names]
+        futures = [executor.submit(process_func, name)
+                   for name in collection_names]
 
         # To collect completed results
         completed_results = []
@@ -390,23 +393,24 @@ def process_collections(db):
             completed_results.append((site, datas))
 
             # Once we have 10 results, send them and wait for 5 seconds
-            if len(completed_results) == 3:
+            if len(completed_results) == 10:
                 # Send/Process the batch of 10 results
-                #print(f"Sending batch of 10: {completed_results[0]}")
+                # print(f"Sending batch of 10: {completed_results[0]}")
                 # Here you can send the batch to your desired destination
                 socket.emit("table", dict(completed_results))
                 # Example: send_batch(completed_results)
 
                 # Wait for 5 seconds before continuing
-                socket.sleep(4)
+                socket.sleep(2)
 
                 # Clear the completed results for the next batch
                 completed_results.clear()
 
         # If there are any remaining results less than 10 after all threads are done
         if completed_results:
-            #print(f"Sending final batch: {completed_results}")
-            socket.emit("table", dict(completed_results))
+            pass
+            # print(f"Sending final batch: {completed_results}")
+            #socket.emit("table", dict(completed_results))
             # Example: send_batch(completed_results)
 
     # Return the shared TotalData dictionary after processing is done
@@ -417,9 +421,15 @@ def background_threads():
     while True:
         c = 0
         TotalData = {}
-        socket.sleep(1)
-        while True: #for i in db.list_collection_names():
+        while True:
+            
             process_collections(db)
+            time.sleep(1)
+      #  while True:  # for i in db.list_collection_names():
+            
+           # for i in db.list_collection_names():
+             #   site, data = get_info(i)
+            #    datas = dict(data, **lookup_db_for_notes(i))
 
             # if re.search('Texel'.lower(), i.lower()):
             # continue
@@ -431,11 +441,9 @@ def background_threads():
             #    datas = dict(data, **lookup_db_for_notes(i))
             #    TotalData[site] = datas
             #
-            c += 1
-            if c == 10:
-                break
+        
 
-        #socket.emit("table", TotalData)
+        # socket.emit("table", TotalData)
 
 
 db_VisblueService = "VisblueService"

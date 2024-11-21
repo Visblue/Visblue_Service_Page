@@ -2,6 +2,7 @@ from pymodbus.client import ModbusTcpClient
 from pymodbus.payload import BinaryPayloadDecoder
 from pymodbus.constants import Endian
 from datetime import datetime 
+import re 
 
 Alarmkoder = {"0000000000000010 ": 'CPLD',
               "0000000000000100 ": 'DetectNoEM',
@@ -219,9 +220,11 @@ class Battery_conn(MODBUS):
 
     def battery_read_control_reg(self):
         return self.battery_data[26]
-    def battery_current_control(self):
-        print("CONTROL: ", int(self.battery_read_control_reg()), self.IP, self.battery_read_ACPower())
+    def battery_current_control(self):        
         control_modes = {0: 'EM Control', 1: 'Smartflow', 2: 'Auto'} 
+        if re.search('vacha', self.site.lower()) or re.search('texel', self.site.lower()) or re.search('varensdorf', self.site.lower())  or re.search('bryte', self.site.lower()):
+            print("EXternal ", self.site) 
+            return 'External Control'
         return control_modes.get(int(self.battery_read_control_reg()), 'Unknown control')  
     
     def battery_check_frozen(self):
