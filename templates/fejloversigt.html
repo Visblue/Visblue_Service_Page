@@ -232,21 +232,19 @@
         <table id="errorTable">
             <thead>
                 <tr>
-                    <th onclick="sortTable(0)" style="text-align: center;">&nbsp; Prioritet</th>
-                    <th onclick="sortTable(1)" style="text-align: center;">&nbsp; ProjektNr</th>
-                    <th onclick="sortTable(2)" style="text-align: left;">Site</th>
-                    <th onclick="sortTable(3)">Fejl</th>
-                    <th onclick="sortTable(4)">Time &#x25B2;&#x25BC;</th>
+                    <th onclick="sortTable(0)" style="text-align: center;">&nbsp; ProjektNr</th>
+                    <th onclick="sortTable(1)" style="text-align: left;">Site</th>
+                    <th onclick="sortTable(2)">Error</th>
+                    <th onclick="sortTable(3)">Time &#x25B2;&#x25BC;</th>
                 </tr>
             </thead>
             <tbody>
                 {% for site in siteErrorData %}
                 <tr>
-                    <td style="text-align: center;">[{{site['Prioritet']}}] </td>
-                    <td style="text-align: center;">{{ site['ProjektNr'] | int }}</td>
-                    <td style="text-align: left;">{{ site['name'] }}</td>
-                    <td>{{ site['error'] }}</td>
-                    <td>{{ site['time'] }}</td>
+                    <td style="text-align: center;">[{{site['Prioritet']}}] &nbsp; &nbsp; &nbsp; {{ site['ProjectNr'] | int }}</td>
+                    <td style="text-align: left;">{{ site['Kunde'] }}</td>
+                    <td>{{ site['Battery_status'] }}</td>
+                    <td>{{ site['Time'] }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -364,12 +362,14 @@ function filterByPriorityAndType() {
 
     for (let i = 1; i < rows.length; i++) {
         let priorityCell = rows[i].getElementsByTagName("TD")[0];
-        let errorCell = rows[i].getElementsByTagName("TD")[3];
+        let errorCell = rows[i].getElementsByTagName("TD")[1];
         if (priorityCell && errorCell) {
             let rowPriority = priorityCell.innerHTML.match(/\[(\d+)\]/);
             let rowError = errorCell.innerHTML;
+
             if (rowPriority) {
                 rowPriority = parseInt(rowPriority[1], 10);
+
                 // Bestem typen baseret på om navnet indeholder _grid, _pv eller ingenting (battery)
                 let rowType = '';
                 if (rowError.toLowerCase().includes("grid")) {

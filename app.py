@@ -25,8 +25,15 @@ thread_lock = threading.Lock()
 thread = None
 
 app.register_blueprint(main_blueprint)
-visblueDB = MongoClient('mongodb://172.20.33.163:27017/')
-db_error_log = visblueDB['servicepage_alarm_time_log']
+
+# Use a single MongoClient instance for the entire application
+visblueDB = MongoClient('mongodb://172.20.33.151:27018/') 
+db_error_log        = visblueDB['Servicepage_Alarm_Log']
+db_customer_info    = visblueDB['Customer_Info'] # Get the customer info database here
+db_service_notes    = visblueDB['ServicePage_Log'] # Get the service notes database here
+
+
+
 
 
 class Visblue_main():
@@ -152,52 +159,7 @@ class Visblue_main():
         self.data['DA_nr'] = datas.get('DA_nr', "")
         self.data['SA_nr'] = datas.get('SA_nr', "")
         self.smartflow = datas.get('SA_nr', False)
-    """
-    def __update_get_collections(self):
-        self.col = None
-        self.add_new = False
-        col_found = False
-        for i in db_error_log.list_collection_names():
-            if re.search(i.lower(), self.site.lower()):
-                self.col = db_error_log[i]
-                col_found = True
-                break
-        if not col_found:
-            self.col = db_error_log[self.site]
-            self.add_new = True
-
-    def update_database_error_log(self):
-        self.__update_get_collections()
-
-        query = {
-            "Kunde": self.site,
-            'ProjectNr': self.project_nr,
-        }
-        if self.bat_conn is None:
-            alarmStatus = 'Offline'
-        else:
-            alarmStatus = self.battery.battery_read_alarm_state()
-        
-        db_current_data = self.col.find_one({}, query)
-
-        if db_current_data is None:
-            self.add_new = True
-        if self.col is not None:
-            db_current_data['Battery_status'].lower() != alarmStatus.lower()
-            alarmStatus = db_current_data['Battery_status'] + ", " + alarmStatus
-
-        data_to_update = {
-            "Kunde": self.site,                
-            "Battery_status": alarmStatus,
-            'ProjectNr': self.project_nr,
-            "Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        }
-        update_data = {
-            "$set": data_to_update
-        }
-       
-        self.col.update_one(query, update_data, upsert=self.add_new)
-"""
+   
 
     def __update_get_collections(self):
         self.col = None
@@ -251,6 +213,18 @@ class Visblue_main():
                     self.col.update_one(query, update_data)
                     self.data['Alarm_registred'] = offline_time
                     return
+            if alarmStatus.lower() == 'OK':
+                # Update existing document with new time and state
+                    offline_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    update_data = {
+                        "$set": {
+                            "Battery_status": alarmStatus,
+                            "Time": offline_time
+                        }
+                    }
+                    self.col.delete_one()#(query, update_data)
+                    #self.data['Alarm_registred'] = offline_time
+                    return
             # Fejlen eksisterer allerede
             existing_status = db_current_data.get('Battery_status', '')
             existing_time = db_current_data.get('Time')
@@ -284,37 +258,12 @@ class Visblue_main():
                 self.col.update_one(query, update_data)
 
     def run(self):
-        self.VisblueBattery()                
+        self.VisblueBattery()      
         self.update_database_error_log()
-
-       # if self.bat_conn:
-       #    self.EM()
-       #    self.PV()
-       #    self.check_for_system_error()
-       #    self.driftsikring()
-     #   self.data['Battery_Alarm_State'] = 'Offline'
-
-        """
-
-        if self.bat_conn:
-            self.get_battery_data()
-            if self.em_conn:
-                self.get_em_data()
-            if self.pv_conn:
-                self.get_pv_data()
-            self.driftsikring()
-            self.add_errors_to_data()
-            self.update_database_error_log()
-"""
-
-
-info = MongoClient('mongodb://172.20.33.151:27018/')
-db = info['Customer_info']
 
 
 def lookup_db_for_notes(col_name):
-    db = visblueDB['service_page_notes']
-    col = db.get_collection(col_name)
+    col = db_service_notes.get_collection(col_name)
     data = col.find_one({}, {"_id": 0}, sort=[("Time", -1)])
 
     if data is None:
@@ -325,20 +274,9 @@ def lookup_db_for_notes(col_name):
     return data
 
 
-def lookup_db_for_actions(col_name):
-    db = visblueDB['Actionlog']
-    col = db.get_collection(col_name)
-    data = col.find_one({}, {"_id": 0})
-
-    if data is None:
-        return {}
-    data = {'Action_date': data.get('Date'), 'Action_name': data.get(
-        'Name'), 'Action_note': data.get('Note')}
-    return data
-
 
 def get_info(col_name):
-    col = db.get_collection(col_name)
+    col = db_customer_info.get_collection(col_name)
     data = col.find_one({}, {"_id": 0})
 
     for i in data:
@@ -352,7 +290,7 @@ def get_info(col_name):
 # Function to handle the processing for each collection
 
 
-def process_collection(i, db, TotalData):
+def process_collection(i,  TotalData):
     site, data = get_info(i)
     datas = dict(data, **lookup_db_for_notes(i))
 
@@ -368,7 +306,7 @@ def process_collection(i, db, TotalData):
 # Function to initialize threading
 
 
-def process_collections(db):
+def process_collections():
     # Initialize a manager to handle shared data
     TotalData = {}
     # Lock to ensure thread-safe access to TotalData
@@ -376,10 +314,10 @@ def process_collections(db):
     TotalData_lock = threading.Lock()
 
     # Create a partial function to pass `db` and `TotalData` to the worker function
-    process_func = partial(process_collection, db=db, TotalData=TotalData)
+    process_func = partial(process_collection,TotalData=TotalData)
 
     # Get the collection names from the database
-    collection_names = db.list_collection_names()
+    collection_names = db_customer_info.list_collection_names()
 
     # Use ThreadPoolExecutor to handle the threads
     with ThreadPoolExecutor(max_workers=10) as executor:  # Max workers set to 10
@@ -423,41 +361,15 @@ def process_collections(db):
 
 
 def background_threads():
-    while True:
-        c = 0
-        TotalData = {}
+    while True:        
         start = time.time()
-        #while True:
-            
-        process_collections(db)
+        process_collections()
         end= time.time()
         print("TIME: ", end-start)
         time.sleep(1)
-      #  while True:  # for i in db.list_collection_names():
-            
-           # for i in db.list_collection_names():
-             #   site, data = get_info(i)
-            #    datas = dict(data, **lookup_db_for_notes(i))
+ 
 
-            # if re.search('Texel'.lower(), i.lower()):
-            # continue
-            # if re.search('Vacha'.lower(), i.lower()):
-            # continue
-            # or re.search("jyderup", i.lower()):
-            # if re.search("skovvang", i.lower()):#or re.search("moccamaster", i.lower()):
-            #    site, data = get_info(i)
-            #    datas = dict(data, **lookup_db_for_notes(i))
-            #    TotalData[site] = datas
-            #
-        
-
-        # socket.emit("table", TotalData)
-
-
-db_VisblueService = "VisblueService"
-db_VisblusSiteLog = "VisblueLog"
-db_MypowergridTimer = 'ServicePageTimer '
-
+ 
 
 @socket.on('note')
 def save_note(msg):
@@ -491,27 +403,3 @@ if __name__ == "__main__":
     # eventlet.wsgi.server(eventlet.listen(('0.0.0.0', 5000)), app)
     http_server.serve_forever()
 
-
-"""
-from time import sleep
-
-site = 'Mollerup'
-em_ip = "172.20.33.195"
-pv_ip = "192.168.3.196"
-pv_info = 'Fronius_Eco'
-em_info = 'Carlo'
-bat_ip = "172.20.33.12"
-
-
-#site    = 'Gelsted'
-#em_ip   = "172.20.32.56"
-#pv_ip   = "172.20.32.58"
-#bat_ip  = "172.20.32.54"
-
-site_1 = Visblue_main("Mollerup", 10680,  bat_ip, em_ip, pv_ip, pv_info, em_info)
-
-site_1.run()
-
-(site_1.data)
-
-"""

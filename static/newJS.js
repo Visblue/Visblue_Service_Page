@@ -98,9 +98,9 @@ function check_status(bat_alarm, bat_state, PV_conn, EM_conn) {
 
 	if (parseInt(bat_state) == 0) {
 		if (status == null) {
-			status = "Battery_Frozen";
+			status = "FrozenState";
 		} else {
-			status += ",BatteryFrozen";
+			status += ",FrozenState";
 		}
 		statusColor = "#f60f0f";
 	}

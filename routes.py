@@ -8,21 +8,87 @@ from pymodbus.client import ModbusTcpClient
 import time
 import re 
 main_blueprint = Blueprint('main', __name__)
-client = pymongo.MongoClient(f"mongodb://172.20.33.163:27017")
-db = client["error_log"]
+client = pymongo.MongoClient(f"mongodb://172.20.33.151:27018")
+db = client["servicepage_alarm_time_log"]
 
+
+
+# Global cache til at gemme data fra CSV-filer
+cache = {}
+
+def load_csv(file_path):
+    if file_path in cache:
+        print(f"Data hentet fra cache for filen: {file_path}")
+        return cache[file_path]
+    else:
+        print(f"Lser filen: {file_path}")
+        data = pd.read_csv(file_path)
+        cache[file_path] = data
+        
+        return data
+
+def get_latest_data_for_projects(datas, db):
+    """Henter de nyeste data for hvert projekt fra MongoDB."""
+    projekt_nr = datas['Nr.']
+    prioritet = datas['Prioritet']
+    all_data = []
+   # print("projekt_nr: ", projekt_nr)
+    for collection_name in db.list_collection_names():
+      #  print("collection_name: " + collection_name)
+        # Hent det nyeste dokument i samlingen
+        latest_data = db[collection_name].find_one(sort=[("time", pymongo.DESCENDING)])
+        if not latest_data:
+            continue
+        
+        for i, nr in enumerate(projekt_nr):
+            #print("here : ", i, nr)
+            if str(nr) == f"{latest_data['ProjectNr']}.0":
+                site_info = {
+                    "Kunde": collection_name,
+                    "ProjectNr": nr,
+                    "Prioritet": prioritet.iloc[i],
+                    "Battery_status": latest_data.get("error", "N/A"),
+                    "Time": latest_data.get("time", "N/A"),
+                }
+                all_data.append(site_info)
+                break
+
+    return all_data
 
 @main_blueprint.route('/fejloversigt', methods=['GET'])
 def fejloversigt():
+    # Eksempel: Hent CSV-data og databaseforbindelse
     global db
-    sti = "/volume1/homes/admin/Downloads/"
+    #sti = "/volume1/homes/admin/Downloads/"
     sti = "C:/Users/FarhadAnayati/VisBlue/VisBlue all - Dokumenter/Product Development/Serviceside"
     if os.getcwd != sti:
         os.chdir(sti)
-    for i in os.listdir():
-        csv = open(i, "r")
-        datas = pd.read_csv(csv)
-        csv.close()
+    for file_name in os.listdir():
+        if file_name.endswith('.csv'):  # Kun CSV-filer
+            file_path = os.path.join(sti, file_name)
+            datas = load_csv(file_path)
+   
+    
+    # Hent data fra MongoDB og processér
+    site_error_data = get_latest_data_for_projects(datas, db)
+
+    if request.method == "POST":
+        return "Post data processed"
+
+    return render_template("fejloversigt.html", siteErrorData=site_error_data)
+
+@main_blueprint.route('/fejloversigts', methods=['GET'])
+def fejloversigts():
+    global db
+    sti = "/volume1/homes/admin/Downloads/"
+    #sti = "C:/Users/FarhadAnayati/VisBlue/VisBlue all - Dokumenter/Product Development/Serviceside"
+    if os.getcwd != sti:
+        os.chdir(sti)
+    for file_name in os.listdir():
+        if file_name.endswith('.csv'):  # Kun CSV-filer
+            file_path = os.path.join(sti, file_name)
+            datas = load_csv(file_path)
+   
     Projekt_Nr = datas['Nr.']
     Projekt_prioritet = datas["Prioritet"]
     all_data = []
@@ -35,11 +101,11 @@ def fejloversigt():
             prioritet = Projekt_prioritet.iloc[i]
             if str(nr_datas) == str(projekt_nr_item)+".0":
                 site_info = {
-                    "name":     collection_name,
-                    'ProjektNr': nr_datas,
+                    "Kunde":     collection_name,
+                    'ProjectNr': nr_datas,
                     'Prioritet': prioritet,
-                    "error":  data["error"],  # ,	 "N/A"),
-                    "time":  data["time"]  # , "N/A")
+                    "Battery_status":  data["error"],  # ,	 "N/A"),
+                    "Time":  data["time"]  # , "N/A")
                 }
                 all_data.append(site_info)
                 break
