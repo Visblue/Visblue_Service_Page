@@ -84,48 +84,27 @@ function save_note(key, value) {
 	socket.emit("note", { key: key, value: value });
 }
 
-function check_status(bat_alarm, bat_state, PV_conn, EM_conn) {
-	var status = null;
-	var statusColor = "white";
-	if (bat_alarm == 'ComingSoon'){
-		return { status: "ComingSoon", statusColor: "grey" , 'opacity' : 0.1, };
+function check_status(bat_alarm, bat_state, PV_conn, EM_conn) {	
+   // console.log("BAT: " + bat_alarm, bat_state);
+	var Battery_status  = null	
+	var Energymeter_status = null		
+	var PV_Status = null		
+	//Battery_status   = bat_alarm == 0 ? null: bat_alarm;
+    if (bat_alarm != 0){
+        Battery_status = bat_alarm;
+    }
+    if (bat_state == 0) {
+        if (Battery_status == null) {
+		Battery_status          = "BatteryFrozen";
+        }
+        else{
+            Battery_status = "," + bat_state
+        }		
 	}
-	//status = (bat_state!= null)? bat_state : null;
-	if (bat_alarm != 0) {
-		status = bat_alarm;
-		statusColor = "#f60f0f";
-	}
-
-	if (parseInt(bat_state) == 0) {
-		if (status == null) {
-			status = "FrozenState";
-		} else {
-			status += ",FrozenState";
-		}
-		statusColor = "#f60f0f";
-	}
-	if (PV_conn == -1) {
-		if (status == null) {
-			status = "PVConnRefused";
-		} else {
-			status += ",PVConnRefused";
-		}
-		statusColor = "#f60f0f";
-	}
-	if (EM_conn == -1) {
-		if (status == null) {
-			status = "EMConnRefused";
-		} else {
-			status += ",EMConnRefused";
-		}
-		statusColor = "#f60f0f";
-	}
-	if (status == null) {
-		status = undefined;
-		statusColor = undefined;
-	}
-	console.log("Status: ", status, "Color: ", statusColor);
-	return { status: status, statusColor: statusColor,  'opacity' : 1, };
+    PV_Status               = PV_conn   == -1   ? "PVConnectionRefused" : null;
+    Energymeter_status      = EM_conn   == -1   ? "EMConnRefused"       : null;
+  
+    return {Battery : Battery_status, EM : Energymeter_status, PV : PV_Status}
 }
 
 
@@ -155,6 +134,15 @@ function add_datas(msg) {
         noteBtn = add_note_area(key, key_without_spaces, msg[key]["Note"]);
 
         var status = check_status(msg[key]["Battery_Alarm_State"], msg[key]["Battery_state"], msg[key]["PV_connection_status"], msg[key]["Energy_meter_connection_status"]);
+        if (status.Battery_status == 'ComingSoon'){
+            statusOpacity = 0.2;
+        }else{
+            statusOpacity = 1;
+        }
+
+
+        Show_battery_status = status.Battery_status == null ?  "Battery: <b style='font-size:38px; color:#0fdc3c'; class='bi bi-check2'> </b>" : "<b style='font-size:25; color:" + status.Battery_color + "';> " + status.Battery_status + " <i style='font-size:14px; color:white; opacity:" + status.opacity + ";'>[" + msg[key]["Alarm_registred"] + "] </i>";
+
         var showStatus = status.status == undefined ? "<b style='font-size:38px; color:#0fdc3c'; class='bi bi-check2'> </b>" : "<b style='font-size:25; color:" + status.statusColor + "';> " + status.status + " <i style='font-size:14px; color:white; opacity:" + status.opacity + ";'>[" + msg[key]["Alarm_registred"] + "] </i>";
         
         var smartFlow = msg[key]["Battery_control"] == "Smartflow" ? "<p style='color:white;' >" + msg[key]["Battery_control"] + " <i style='color:#37dc0f;' class='fa fa-leaf'></i>" + " </p>" : "<p style='color:white;'>" + msg[key]["Battery_control"] + "</p>";
@@ -169,7 +157,7 @@ function add_datas(msg) {
         nr_td.style.textAlign = "right";
         site_td.innerHTML = "&nbsp; " + key || "&nbsp; N/A ";
         prio_td.innerHTML = showPrioritet;
-        statud_td.innerHTML = showStatus;
+        statud_td.innerHTML = Show_battery_status;
         power_td.innerHTML = msg[key]["Battery_ACPower"] || 0;
         soc_td.innerHTML = msg[key]["Battery_State_of_Charge"] || 0;
         control_td.innerHTML = smartFlow;
@@ -298,17 +286,38 @@ function add_data(msg) {
 
 		var status = null;		
 		var showStatus = undefined;
-		status = check_status(msg[key]["Battery_Alarm_State"], msg[key]["Battery_state"], msg[key]["PV_connection_status"], msg[key]["Energy_meter_connection_status"]);
-		if (status.status == undefined) {
-			showStatus = "<b style='font-size:38px; color:#0fdc3c'; class='bi bi-check2'> </b>";
-		} else {
-			console.log("STATUS: ", msg[key]["Alarm_registred"] )
-			showStatus = "<b style='font-size:25; color:" + status.statusColor + "';> " + status.status + " <i style='font-size:14px; color:white; opacity:" + status.opacity + ";'>[" + msg[key]["Alarm_registred"] + "] </i>";// +"</b> <i style='font-size:15px> [" + msg[key]["Alarm_registred"] + "] </i>";
+        var showOpacity = 1;
+       
+
+
+
+
+		status = check_status(msg[key]["Battery_Alarm_State"], msg[key]["Battery_state"], msg[key]["PV_connection_status"], msg[key]["Energy_meter_connection_status"]);                
+        
+       // console.log("Battery: ",status.Battery,  msg[key]["Battery_Alarm_State"], msg[key]["Battery_state"], msg[key]["PV_connection_status"], msg[key]["Energy_meter_connection_status"])
+        if (status.Battery == 'ComingSoon') {
+            showOpacity = 0.2;
+        }
+        icon_ = "<b style='font-size:30px; color:#0fdc3c'; class='bi bi-check2'> </b>";
+
+		if (status.Battery == null && status.PV == null && status.EM == null) {
+			showStatus = "<b style='font-size:38px; color:#0fdc3c'; class='bi bi-check2'> </b>";        
+		} else {			
+            showAlarm = "</b>";
+            if (msg[key]["Alarm_registred"]){
+                showAlarm = "<br><i style='color:white; font-size: 13px;'> Alarm registered: " + msg[key]["Alarm_registred"] + "</b> </i>";
+    }                     
+            
+			showStatus =    " <b style='font-size:15px; color:red;'> Battery: &nbsp;" + (status.Battery    == null ? "" : status.Battery)    + "</b>" +
+                            (status.EM == null ? "":  ("<br>EM:      <b style='font-size:15px; color:red;'> " + (status.EM         == null ? "" : status.EM )        + "</b>")) +
+                            (status.PV == null ? "" : ("<br>PV:      <b style='font-size:15px; color:red;'> " + (status.PV         == null ? "" : status.PV ) ))       +  showAlarm; 
+             
+            //"<b style='font-size:25; color:" + status.statusColor + "';> " + status.status + " <i style='font-size:14px; color:white; opacity:" + status.opacity + ";'>[" + msg[key]["Alarm_registred"] + "] </i>";// +"</b> <i style='font-size:15px> [" + msg[key]["Alarm_registred"] + "] </i>";
 		}
-		
+		console.log("SHOW STATUS: ", showStatus)
 		var smartFlow = null;
 		if (msg[key]["Battery_control"] == "Smartflow") {  			
-			smartFlow = "<p style='color:white;' >" +  msg[key]["Battery_control"] + " <i style='color:#37dc0f;' class='fa fa-leaf'></i>" +  " </p>";
+			smartFlow = "<p style='color:0fdc3c;' >" +  msg[key]["Battery_control"] +  " </p>";
 		}			
 		else {            
 			smartFlow = "<p style='color:white;'>" +  msg[key]["Battery_control"] + "</p>";    
@@ -373,16 +382,18 @@ function add_data(msg) {
 
 
 		//  'opacity' : 1, 
-		nr_td.style.opacity = status.opacity; // Set the opacity of the cell to 1 for visibility
-		site_td.style.opacity = status.opacity; // Set the opacity of the
-		prio_td.style.opacity = status.opacity; // Set the opacity of the cell to 1 for visibility
-		signed_td.style.opacity = status.opacity; // Set the opacity of the cell to 1 for visibility
-		DASA_td.style.opacity = status.opacity; // Set the opacity of the cell to 1 for visibility
-		planning_td.style.opacity = status.opacity; // Set the opacity of the cell to 1 for visibility
-		control_td.style.opacity = status.opacity; // Set the opacity of the cell to 1 for visibility
-		power_td.style.opacity = status.opacity; // Set the opacity of the cell to 1 for visibility
-		soc_td.style.opacity = status.opacity; // Set the opacity of the cell to 1 for visibility
-		reset_btn_td.style.opacity = status.opacity; //
+		nr_td.style.opacity         = showOpacity; // Set the opacity of the cell to 1 for visibility
+		site_td.style.opacity       = showOpacity; // Set the opacity of the
+		prio_td.style.opacity       = showOpacity; // Set the opacity of the cell to 1 for visibility
+		signed_td.style.opacity     = showOpacity; // Set the opacity of the cell to 1 for visibility
+		DASA_td.style.opacity       = showOpacity; // Set the opacity of the cell to 1 for visibility
+		planning_td.style.opacity   = showOpacity; // Set the opacity of the cell to 1 for visibility
+		control_td.style.opacity    = showOpacity; // Set the opacity of the cell to 1 for visibility
+		power_td.style.opacity      = showOpacity; // Set the opacity of the cell to 1 for visibility
+		soc_td.style.opacity        = showOpacity; // Set the opacity of the cell to 1 for visibility
+		reset_btn_td.style.opacity  = showOpacity; //
+        note_btn_td.style.opacity = showOpacity; // Set the opacity of the
+        statud_td.style.opacity = showOpacity; // Set the opacity of the
 		newRow.id = `row-${key_without_spaces}`;
 		site_td.id = `site_td-${key_without_spaces}`;
 		prio_td.id = `prio_td-${key_without_spaces}`;
@@ -450,5 +461,3 @@ socket.on("table", function (msg) {
 	add_data(msg);
 	
 });
-
-
