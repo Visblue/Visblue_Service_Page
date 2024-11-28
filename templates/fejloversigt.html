@@ -9,7 +9,7 @@
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
 	<style>
 		body {
-			background-color: #1a1a2e;
+			background-color:black;
 			color: white;
 			font-family: Arial, sans-serif;
 		}
@@ -54,11 +54,20 @@
     color: #fff;        /* White text color */
     box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2); /* Optional shadow for aesthetics */
 }
+.time{
+	font-size: 25px;
+	font-weight: bold;
+	text-align:center;
+	margin-top:0px;
+	padding:0px;
+	
+}
 	</style>
 </head>
 
 <body>
 	<div class="container">
+		<!--<p id="refreshTimer" class='time' ></p> CLOCK--> 
 		<h1 class="text-center">System Status</h1>
 		<p class="text-center" style="font-size: 18px; ">Number of errors: <span id="error-count"style="font-size: 20px; font-weight: bold; ">0</span>
 				&ensp;|&ensp;Online: <span id="latest-online" style="font-size: 20px; font-weight: bold; ">0</span>
@@ -102,11 +111,14 @@
 	<br>
     <div class="filter-group">
         <h6>Alarm Types:</h6>
-        <label><input type="checkbox" class="filter-checkbox_2" value="DetectNoEM"> DetectNoEM</label>
-        <label><input type="checkbox" class="filter-checkbox_2" value="DiffPressure"> DiffPressure</label>
-        <label><input type="checkbox" class="filter-checkbox_2" value="Tankpressurerelief"> Tankpressurerelief</label>
-        <label><input type="checkbox" class="filter-checkbox_2" value="Leak_Alarm"> Leak Alarm</label>
-        <label><input type="checkbox" class="filter-checkbox_2" value="OCVsensor"> OCVsensor</label>
+        <label><input type="checkbox" class="filter-checkbox_2" value="DetectNoEM">DetectNoEM</label>&ensp;
+        <label><input type="checkbox" class="filter-checkbox_2" value="DiffPressure">DiffPressure</label>&ensp;
+        <label><input type="checkbox" class="filter-checkbox_2" value="Tankpressurerelief">Tankpressurerelief</label>&ensp;
+        <label><input type="checkbox" class="filter-checkbox_2" value="Leak_Alarm">Leak Alarm</label>&ensp;
+        <label><input type="checkbox" class="filter-checkbox_2" value="OCVsensor">OCVsensor</label>&ensp;<br>
+        <label><input type="checkbox" class="filter-checkbox_2" value="State Error">State Error</label>&ensp;
+        <label><input type="checkbox" class="filter-checkbox_2" value="State Error">Emergency stop</label>&ensp;      
+        
     </div>
 
     <button class="btn btn-success" onclick="applyFilters()">Apply Filters</button>
@@ -151,6 +163,25 @@
 		}
 
 		// Automatisk opdatering hver 10. minut (600.000 ms)
+		
+ //       let countdown = 500;
+
+ //       // Opdater nedtællingen hver 1 sekund (1000 ms)
+ //       const timerInterval = setInterval(() => {
+ //           // Reducer nedtællingen
+ //           //countdown--;
+//	    	const now = new Date();
+ //           const timeString = now.toLocaleTimeString(); // Formateret tid
+ //           document.getElementById("refreshTimer").textContent = `Time: ${timeString}`;
+ //          // document.getElementById("refreshTimer").innerHTML = `Time: ${timeString}`;;
+
+ //           // Når tiden er 0, stop intervallet og opdater siden
+ //           if (countdown <= 0) {
+ //               clearInterval(timerInterval);
+ //               //location.reload(); // Genindlæs siden
+ //               fetchData()
+ //           }
+ //       }, 1000);
 		setInterval(fetchData, 300000);
 
 		// Frste datahentning
@@ -395,7 +426,7 @@ function applyFilters() {
     // Filtrering baseret på alarmtyper
     if (alarmFilters.length > 0) {
         filteredData = filteredData.filter(row =>
-            alarmFilters.includes(row.Battery_status) // Antag at `Battery_status` er alarmfeltet
+            alarmFilters.some(filter => row.Battery_status.includes(filter)) // Antag at `Battery_status` er alarmfeltet
         );
     }
 

@@ -172,8 +172,70 @@ class Visblue_main():
         if not col_found:
             self.col = db_error_log[self.site]
             self.add_new = True
+            
+
 
     def update_database_error_log(self):
+        
+        self.__update_get_collections()
+        
+        query = {
+        "Kunde": self.site,
+        'ProjectNr': self.project_nr,
+    }
+
+        alarmStatus = "OK" if self.data.get('Battery_Alarm_State', 0) == 0 else self.data['Battery_Alarm_State']
+        db_current_data = self.col.find_one(query)
+
+        if db_current_data is None:
+            data_to_update = {
+                "Kunde": self.site,
+                "Battery_status": alarmStatus,
+                'ProjectNr': self.project_nr,
+                "Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }
+            self.col.insert_one(data_to_update)
+        else:
+            existing_status = db_current_data.get('Battery_status', '')
+            existing_time = db_current_data.get('Time')
+
+            if alarmStatus.lower() == "offline":
+                # Markér som offline
+                offline_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                update_data = {
+                    "$set": {
+                        "Battery_status": alarmStatus,
+                        "Time": offline_time
+                    }
+                }
+                self.col.update_one(query, update_data)
+                return
+
+            if alarmStatus.lower() == "ok":
+                # Sæt status til OK
+                update_data = {
+                    "$set": {
+                        "Battery_status": alarmStatus,
+                        "Time_resolved": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    }
+                }
+                self.col.update_one(query, update_data)
+                return
+
+            if alarmStatus.lower() not in existing_status.lower():
+                # Tilføj ny fejl
+                existing_errors = existing_status.split(", ") if existing_status else []
+                updated_status = ", ".join(existing_errors + [alarmStatus]) if alarmStatus not in existing_errors else existing_status
+
+                data_to_update = {"Battery_status": updated_status}
+
+                if "Time_resolved" not in db_current_data:
+                    data_to_update["Time"] = existing_time
+
+                update_data = {"$set": data_to_update}
+                self.col.update_one(query, update_data)
+
+    def update_database_error_logs(self):
         self.__update_get_collections()
 
         query = {
@@ -191,7 +253,6 @@ class Visblue_main():
         db_current_data = self.col.find_one(query)
 
         if db_current_data is None:
-
             data_to_update = {
                 "Kunde": self.site,
                 "Battery_status": alarmStatus,
@@ -261,7 +322,8 @@ class Visblue_main():
         self.VisblueBattery()
         # self.EM()
         # self.PV()
-        self.update_database_error_log()
+        if self.data['Battery_Alarm_State'] != 'ComingSoon':            
+            self.update_database_error_log()
 
 
 def lookup_db_for_notes(col_name):
@@ -321,7 +383,7 @@ def process_collections():
     collection_names = db_customer_info.list_collection_names()
 
     # Use ThreadPoolExecutor to handle the threads
-    with ThreadPoolExecutor(max_workers=10) as executor:  # Max workers set to 10
+    with ThreadPoolExecutor(max_workers=5) as executor:  # Max workers set to 10
         # Submit each collection to be processed in a separate thread
         futures = [executor.submit(process_func, name)
                    for name in collection_names]
@@ -337,7 +399,7 @@ def process_collections():
             completed_results.append((site, datas))
 
             # Once we have 10 results, send them and wait for 5 seconds
-            if len(completed_results) ==10:
+            if len(completed_results) ==20:
                 # Send/Process the batch of 10 results
                 # print(f"Sending batch of 10: {completed_results[0]}")
                 # Here you can send the batch to your desired destination
@@ -345,7 +407,7 @@ def process_collections():
                 # Example: send_batch(completed_results)
 
                 # Wait for 5 seconds before continuing
-                socket.sleep(1235)
+                socket.sleep(1)
 
                 # Clear the completed results for the next batch
                 completed_results.clear()
