@@ -3,12 +3,15 @@ import pymongo
 import os
 import pandas as pd
 from flask import render_template, request, Blueprint, jsonify
-from pymodbus.client import ModbusTcpClient
+from pymodbus.client import ModbusTcpClient, AsyncModbusTcpClient
 import time
 import re 
+import asyncio
 main_blueprint = Blueprint('main', __name__)
 client = pymongo.MongoClient('mongodb://172.20.33.151:27018/') 
 db = client["ServicePage_Log"]
+
+
 
 
 
@@ -124,51 +127,63 @@ def fejloversigts():
     return all_data# render_template("Nyfejl.html")#("fejloversigt.html", siteErrorData=all_data)
 
 
+db_sites = client['Customer_info']
 
-db_sites = client['Systems']
+# Example route for resetting battery
 @main_blueprint.route('/reset', methods=['POST'])
-def reset_battery():
-    form_data = request.form  # For POST
-    query_data = request.args  # For GET
-    #print("form_data:", form_data)  # Debug POST data
-    #print("query_data:", query_data)  # Debug GET data
+async def reset_battery():
+    site = request.form.get('site')
+    if not site:
+        return jsonify({"error": "Site is required"}), 400
 
-    site = request.form.get('site')  # Safely access form data  
+    db_sites = client['Customer_info']
     found = False
-    for i in db_sites.list_collection_names():
-        if re.search(site, i):
-            data = db_sites[i].find_one()
-            IP = data.get('PLC')
-            port = data.get('Port', 502)
+    # Search for the site in the database
+    for collection_name in db_sites.list_collection_names():
+        if site.lower() == collection_name.lower():
+            data = db_sites[collection_name].find_one()
+            if not data:
+                return jsonify({"error": "Site data not found"}), 404
+                
+            data = data[site]
+            IP = data.get('Battery_ip')
+            port = data.get('Battery_port', 502)  # Default port 502 for Modbus
+            print(data, IP , port, "\n\n")
             found = True
             break
 
     if not found:
-        return "Site not found"
-    
-    plc_client = ModbusTcpClient(str(IP), port=port)
-    if not plc_client.is_socket_open():
-        plc_client.connect()
-    
-    # Perform PLC reset sequence
-    if plc_client.read_holding_registers(26, 1, 1).registers != 1:
-        plc_client.write_register(26, 1, 1)
-    time.sleep(2)
-    plc_client.write_register(27, 1, 1)
-    time.sleep(5)
-    plc_client.write_register(27, 0, 1)
-    plc_client.write_register(26, 0, 1)
+        return jsonify({"error": "Site not found"}), 404
+    print("found: ", IP, port)
+    async def reset_sequence(ip, port):
+        # Initialize the Async Modbus TCP client
+        plc_client = AsyncModbusTcpClient(ip, port=port)
 
-    if plc_client.is_socket_open():
-        plc_client.close()
+        # Connect to the PLC
+        if not await plc_client.connect():
+            return {"error": "Unable to connect to PLC"}
 
-    #print(f"{site} - Restarted")
+        try:
+            # Check the status of register 26
+            result = await plc_client.read_holding_registers(26, 1, 1)
+            if result.registers[0] != 1:
+                await plc_client.write_register(26, 1, 1)
+                await asyncio.sleep(2)
+            await plc_client.write_register(27, 1, 1)
+            await asyncio.sleep(5)
+            await plc_client.write_register(27, 0, 1)
+            await plc_client.write_register(26, 0, 1)
+        finally:
+            # Close the connection if it's open
+            if plc_client.connected:
+                 plc_client.close()
 
-    # Update restart status when the operation is completed successfully
-    
+    # Run the reset sequence
+    await reset_sequence(IP, port)
+
+    return jsonify({"message": "Reset instruction issued! Please wait 20 seconds before retrying."})
 
 
-    return "SUCCESS"
 
 def fejloversigtss():
     global db

@@ -19,7 +19,7 @@ from routes import main_blueprint
 from modbusSystems import Battery_conn, EnergyMeter_conn, PV_conn
 
 app = Flask(__name__)
-socket = SocketIO(app)
+socket = SocketIO(app, async_mode="eventlet")
 thread_lock = threading.Lock()
 thread = None
 
@@ -407,7 +407,7 @@ def process_collections():
                 # Example: send_batch(completed_results)
 
                 # Wait for 5 seconds before continuing
-                socket.sleep(1)
+                socket.sleep(1523)
 
                 # Clear the completed results for the next batch
                 completed_results.clear()
@@ -460,6 +460,7 @@ def home():
 if __name__ == "__main__":
 
     # socket.run(app)
-    http_server = WSGIServer(("0.0.0.0", 2000), app)
+    #http_server = WSGIServer(("0.0.0.0", 2000), app)
     # eventlet.wsgi.server(eventlet.listen(('0.0.0.0', 5000)), app)
-    http_server.serve_forever()
+	socket.run(app, host="0.0.0.0", port=2000, use_reloader=False)
+    #http_server.serve_forever()
