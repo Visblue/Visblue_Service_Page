@@ -4,6 +4,11 @@ from pymodbus.constants import Endian
 from datetime import datetime 
 import re 
 
+
+
+a = "detechnoem, abc"
+
+
 Alarmkoder = {"0000000000000010 ": 'CPLD',
               "0000000000000100 ": 'DetectNoEM',
               "0000000000001000 ": 'BlockedStack',
@@ -211,7 +216,16 @@ class Battery_conn(MODBUS):
     
     def battery_read_alarm_state(self):
         if self.battery_data[1] > 0:
-            return convertAlarmCode(self.battery_data[1])
+            res = convertAlarmCode(self.battery_data[1])
+            if re.search("se Svømmehal", self.site) and re.search('detectnoem', res.lower()):
+                res = res.replace('DetectNoEM,', "")
+                if len(res) <= 0:
+                	res = 0
+            if re.search("e-storage", self.site.lower()) and re.search('detectnoem', res.lower()):
+                res = res.replace('DetectNoEM,', "")
+                if len(res) <= 0:
+                	res = 0
+            return res
         return 0
         #return self.battery_data[1]
 

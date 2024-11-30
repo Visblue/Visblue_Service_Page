@@ -95,7 +95,8 @@ function check_status(bat_alarm, bat_state, PV_conn, EM_conn) {
     }
     if (bat_state == 0) {
         if (Battery_status == null) {
-		Battery_status          = "BatteryFrozen";
+		Battery_status          = "ReadyForStartup";
+		
         }
         else{
             Battery_status = "," + bat_state
@@ -292,11 +293,17 @@ function add_data(msg) {
 
 
 
-		status = check_status(msg[key]["Battery_Alarm_State"], msg[key]["Battery_state"], msg[key]["PV_connection_status"], msg[key]["Energy_meter_connection_status"]);                
+		status = check_status(msg[key]["Battery_Alarm_State"], msg[key]["Battery_state"], msg[key]["PV_connection_status"], msg[key]["Energy_meter_connection_status"]);         
+		StatusColor = 'red';
         
        // console.log("Battery: ",status.Battery,  msg[key]["Battery_Alarm_State"], msg[key]["Battery_state"], msg[key]["PV_connection_status"], msg[key]["Energy_meter_connection_status"])
         if (status.Battery == 'ComingSoon') {
             showOpacity = 0.2;
+            StatusColor = 'grey';
+        }
+        
+        if (status.Battery == 'ReadyForStartup') {            
+            StatusColor = 'yellow';
         }
         icon_ = "<b style='font-size:30px; color:#0fdc3c'; class='bi bi-check2'> </b>";
 
@@ -306,12 +313,12 @@ function add_data(msg) {
             showAlarm = "</b>";
             if (msg[key]["Alarm_registred"]){
                 showAlarm = "<br><i style='color:white; font-size: 13px;'> Alarm registered: " + msg[key]["Alarm_registred"] + "</b> </i>";
-    }                     
-            
-			showStatus =    " <b style='font-size:15px; color:red;'> Battery: &nbsp;" + (status.Battery    == null ? "" : status.Battery)    + "</b>" +
+    		}                     
+            console.log(StatusColor)
+			showStatus =    "<b style='font-size:15px; color:"+ StatusColor +";' > Battery: " + (status.Battery    == null ? "" : status.Battery)    + "</b>" +
                             (status.EM == null ? "":  ("<br>EM:      <b style='font-size:15px; color:red;'> " + (status.EM         == null ? "" : status.EM )        + "</b>")) +
                             (status.PV == null ? "" : ("<br>PV:      <b style='font-size:15px; color:red;'> " + (status.PV         == null ? "" : status.PV ) ))       +  showAlarm; 
-             
+            console.log(showStatus)
             //"<b style='font-size:25; color:" + status.statusColor + "';> " + status.status + " <i style='font-size:14px; color:white; opacity:" + status.opacity + ";'>[" + msg[key]["Alarm_registred"] + "] </i>";// +"</b> <i style='font-size:15px> [" + msg[key]["Alarm_registred"] + "] </i>";
 		}
 		console.log("SHOW STATUS: ", showStatus)

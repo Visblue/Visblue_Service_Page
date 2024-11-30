@@ -407,7 +407,7 @@ def process_collections():
                 # Example: send_batch(completed_results)
 
                 # Wait for 5 seconds before continuing
-                socket.sleep(1523)
+                socket.sleep(5)
 
                 # Clear the completed results for the next batch
                 completed_results.clear()
