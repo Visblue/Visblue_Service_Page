@@ -35,18 +35,11 @@
 			   }
 
 
-
-
-
-
-
-
 			       .PickTime {
 			           text-align: left;
 			           font-size: 15px;
 			           text-align: center;
-			           font-weight:bold
-
+			           font-weight:bold;
 			           color:black;
 			       	padding: 8px;
 			           margin:0px;
@@ -277,7 +270,7 @@
 			               width: 80px;
 			           }
 			       }
-			         .fancy-button {
+			         .fancy-buttons {
 			           background: linear-gradient(45deg, #6a11cb, #2575fc);
 			           border: none;
 			           border-radius: 12px;
@@ -289,10 +282,82 @@
 			           transition: transform 0.2s;
 			       }
 
-			       .fancy-button:hover {
+			       .fancy-buttons:hover {
 			           transform: scale(1.05);
 			       }
-			.simple-button {
+			       
+			       .fancy-button {
+    background: linear-gradient(135deg, #4facfe, #00f2fe); /* Professionel bl gradient */
+    border: none;
+    border-radius: 30px;
+    color: white;
+    padding: 14px 28px;
+    font-size: 18px;
+    font-weight: bold;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+    transition: all 0.5s ease, background-position 0.5s;
+    background-size: 300%; /* For dynamisk gradient */
+    position: relative;
+    overflow: hidden;
+}
+
+.fancy-button:hover {
+    background-position: right; /* Skifter gradientens retning */
+    transform: translateY(-3px) scale(1.1); /* Lfter og forstrrer knappen */
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+}
+
+.fancy-button:active {
+    transform: translateY(0) scale(0.98); /* Lille animation ved klik */
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Skinnende Effekt */
+.fancy-button::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: rgba(255, 255, 255, 0.4);
+    transform: rotate(45deg);
+    transition: opacity 0.5s, transform 1.2s;
+    z-index: 1;
+    opacity: 0;
+}
+
+.fancy-button:hover::before {
+    opacity: 1;
+    transform: rotate(45deg) translateX(50%) translateY(50%);
+}
+
+/* Ekstra Gld Effekt */
+.fancy-button::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.3), rgba(0, 0, 0, 0));
+    opacity: 0;
+    border-radius: 30px;
+    transition: opacity 0.7s ease;
+    z-index: 0;
+}
+
+.fancy-button:hover::after {
+    opacity: 1;
+}
+
+
+			       
+			       
+			       
+				.simple-button {
 			           background-color: #007BFF;
 			           border: none;
 			           border-radius: 5px;
@@ -353,6 +418,28 @@
 			       .hidden {
 			           display: none;
 			       }
+			       
+			  .newsfeedContainer{
+			  	
+			  				position: absolute;
+				text-align:center;
+				  height: 35px;
+				width: 100px;
+			background-color: black;
+				
+				right:50%;
+				z-index: 1}
+			
+			.newsfeed{
+	
+				font-size: 35px;
+			
+			
+				color:white;
+	
+				
+			}
+			       
 		</style>
 
 		<title>Visblue Service Page</title>
@@ -361,12 +448,16 @@
 		<!--<div class="overlay" id="overlay">
         <div class="loader" id="loader"></div>
     </div>-->
-
+    <div class=newsfeedContainer>
+    <p id=newsfeed>Update: </p>
+    </div>
+    
+		
 		<div class="content" id="content">
 			<table class="tables" id="tables">
 				<thead>
 					<tr>
-						<th onclick="sortTable(0)" style="text-align: right">&nbsp; &nbsp; &nbsp;</th>
+						<th onclick="sortTable(0)"  >&nbsp; &nbsp; &nbsp;</th>
 						<th onclick="sortTable(1)" style="text-align: right">Nr. &nbsp; &nbsp; &nbsp;</th>
 						<th onclick="sortTable(2)" style="text-align: left">Site</th>
 						<!--<th onclick="sortTable(2)" style="text-align: center; font-weight: bold;">Location</th>-->
@@ -381,18 +472,22 @@
 						<th onclick="sortTable(8)">Signed</th>
 						<th onclick="sortTable(9)">DA/SA</th>
 						<!--Operating warranty</th>-->
-						<th style="text-align: center" onclick="sortTable(9)" colspan="3">Reset</th>
-						<th id="ResetRes">
+						<th colspan=3 onclick="sortTable(9)" >
+							
+							<p id="ResetRes" style="text-align:center;" >
+								Restart
 							<form action="/fejloversigt" method="GET" target="/fejloversigt">
-								<button class="fancy-button">Show latest Error</button>
+								<button data-tooltip="Vent, indtil animationen er færdig..." class="fancy-button">Show latest Error</button>
 							</form>
+						</p>
+					
 						</th>
 						<!--<th onclick="sortTable(7)" style="text-align: center; font-weight: bold" id="Tarif">Tarifstyring Status</th>-->
 
 						<!--<th style="text-align:center; font-weight: bold;">Spotpris Live</th>-->
 					</tr>
 				</thead>
-				<tbody>
+			<!--	<tbody>
 					{% for i in range(customer|length) %} {%if i % 2 == 0%}
 					<tr class="active-row">
 						{%else%}
@@ -403,19 +498,19 @@
 						<td style="text-align: right" id="{{customer[i]}}_Projekt"></td>
 						<td style="text-align: left" id="{{customer[i]}}"></td>
 						<td style="text-align: center" id="{{customer[i]}}_battery_status"></td>
-						<!--<td style="text-align: center; font-weight: bold;" id="{{customer[i]}}_Location"></td>                -->
+						<!--<td style="text-align: center; font-weight: bold;" id="{{customer[i]}}_Location"></td>               
 						<td style="text-align: center" id="{{customer[i]}}_battery_power"></td>
 						<td style="text-align: center" id="{{customer[i]}}_battery_soc"></td>
 						<!-- <div class="battery" ><i style=" position: absolute; right:22%; top:38px; font-size: 16px; rotate:90deg;" id="{{customer[i]}}_SOC"></i><div class="battery-tip"></div><div  class="battery-level" id="{{customer[i]}}_SOCS"></div></div></td>-->
 						<!--<td id="{{customer[i]}}_Elpris"></td>-->
 						<!--<td style="text-align: Center;  font-weight: bold;" id="{{customer[i]}}_Setpoints"></td>-->
-						<!--<td style="text-align: center; font-weight: bold;" id="{{customer[i]}}_Astate"></td>-->
+						<!--<td style="text-align: center; font-weight: bold;" id="{{customer[i]}}_Astate"></td>
 						<td style="text-align: center" id="{{customer[i]}}_TarifstyringVersion"></td>
 
 						<td style="text-align: center" id="{{customer[i]}}_LastAction"><textarea rows="2" cols="500" id="{{customer[i]}}_TextArea" onChange="saveNote(this);" style="background-color: transparent; color: white; width: 380px; text-align: center; border-style: none; overflow: auto"></textarea></td>
 						<td style="text-align: center" id="{{customer[i]}}_Deadline"></td>
 						<td style="text-align: center" id="{{customer[i]}}_Drift"><i id="{{customer[i]}}_TEST"></i></td>
-						<td style="text-align: center">
+					<!--	<td style="text-align: center">
 							<i style="text-align: left; position: absolute" id="{{customer[i]}}_plan_placeholder"></i>
 							<input required class="info" id="{{customer[i]}}_plans" type="date" style="text-align: center; font-size: 15px; width: 100px" /><br />
 							<input class="simple-button" style="width: 60px" id="{{customer[i]}}_Save" type="submit" value="Save" name="{{customer[i]}}" onclick="Plan(name)" />
@@ -423,7 +518,7 @@
 
 						<td></td>
 
-						<!--<form action="/resetBattery" method="POST"> pattern="[A-Za-z0-9]"
+						<form action="/resetBattery" method="POST"> pattern="[A-Za-z0-9]"
 			    <input type="hidden" name="customerId" value="{{ customer[i] }}">
     			<button type="submit" class="simple-button" id="{{ customer[i] }}res">Restart Battery</button>
 				</form>
@@ -431,11 +526,11 @@
                 form action="/resetBattery" method="POST">
                 	<i id="{{customer[i]}}res" ></i>
                 	<button style="text-align: center; "class="simple-button" > Restart Battery</button></form>-->
-						<!--<td style="text-align: center; font-weight: bold" id="{{customer[i]}}_Tarifstyring"></td>onclick="Reset(value)">-->
+						<!--<td style="text-align: center; font-weight: bold" id="{{customer[i]}}_Tarifstyring"></td>onclick="Reset(value)">
 					</tr>
 
 					{% else %} {%endfor%}
-				</tbody>
+				</tbody>-->
 			</table>
 		</div>
 	</body>

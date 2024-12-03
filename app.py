@@ -399,7 +399,7 @@ def process_collections():
             completed_results.append((site, datas))
 
             # Once we have 10 results, send them and wait for 5 seconds
-            if len(completed_results) ==20:
+            if len(completed_results) ==1:
                 # Send/Process the batch of 10 results
                 # print(f"Sending batch of 10: {completed_results[0]}")
                 # Here you can send the batch to your desired destination
@@ -407,7 +407,7 @@ def process_collections():
                 # Example: send_batch(completed_results)
 
                 # Wait for 5 seconds before continuing
-                socket.sleep(5)
+                socket.sleep(5121)
 
                 # Clear the completed results for the next batch
                 completed_results.clear()
@@ -462,5 +462,5 @@ if __name__ == "__main__":
     # socket.run(app)
     #http_server = WSGIServer(("0.0.0.0", 2000), app)
     # eventlet.wsgi.server(eventlet.listen(('0.0.0.0', 5000)), app)
-	socket.run(app, host="0.0.0.0", port=2000, use_reloader=False)
+	socket.run(app, host="0.0.0.0", port=2000, use_reloader=True)
     #http_server.serve_forever()

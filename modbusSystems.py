@@ -220,11 +220,11 @@ class Battery_conn(MODBUS):
             if re.search("se Svømmehal", self.site) and re.search('detectnoem', res.lower()):
                 res = res.replace('DetectNoEM,', "")
                 if len(res) <= 0:
-                	res = 0
+                    res = 0
             if re.search("e-storage", self.site.lower()) and re.search('detectnoem', res.lower()):
                 res = res.replace('DetectNoEM,', "")
                 if len(res) <= 0:
-                	res = 0
+                    res = 0
             return res
         return 0
         #return self.battery_data[1]

@@ -1,5 +1,9 @@
 # rom app import app,render_template, request, redirect, url_for, send_file
 import pymongo
+
+
+
+
 import os
 import pandas as pd
 from flask import render_template, request, Blueprint, jsonify
@@ -10,6 +14,9 @@ import asyncio
 main_blueprint = Blueprint('main', __name__)
 client = pymongo.MongoClient('mongodb://172.20.33.151:27018/') 
 db = client["ServicePage_Log"]
+
+
+
 
 
 
@@ -246,3 +253,15 @@ def get_data():
     data = fejloversigtss()
     #print("DATA: ", data)
     return  jsonify(data)
+    
+
+
+dbNewsfeed = client["servicePageNews"]
+@main_blueprint.route('/newsfeed', methods=['POST', 'GET'])
+def get_news():
+    col = dbNewsfeed['News']
+       
+    data = col.find_one(sort=[("_id", -1)])  # Sort by _id in descending order
+
+
+    return  jsonify(data['News'])
