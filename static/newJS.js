@@ -1,6 +1,50 @@
 socket = io();
 socket.on("connect", function (msg, chargeColor) {});
 
+
+
+// newsfeed
+function fetchData() {
+	$.getJSON('/newsfeed', function (response) {
+		data = response;
+		document.getElementById("newsfeed").innerHTML = data;		
+
+	});
+}
+
+// Funksjon for å vise popupen
+function showPopup() {
+    var popup = document.querySelector('.newsfeedContainer');
+    popup.classList.add('show'); // Legger til 'show' for å vise popupen
+}
+
+// Funksjon for å skjule popupen (på knappeklikk)
+function rmNewsBoks() {
+    var popup = document.querySelector('.newsfeedContainer');
+    popup.classList.remove('show'); // Fjerner 'show' for å skjule popupen
+}
+
+// For å vise popupen etter en viss tid (f.eks. etter 2 sekunder)
+setTimeout(showPopup, 2000);
+
+fetchData()
+setInterval(fetchData, 9000);
+
+
+
+
+
+
+document.addEventListener("DOMContentLoaded", function () {
+    const button = document.querySelector(".fancy-button");
+
+    // Simulerer en animationstid (fx 3 sekunder)
+    setTimeout(() => {
+        button.classList.add("active"); // Gør knappen aktiv
+        button.setAttribute("data-tooltip", "Klik for at se de nyeste fejl!");
+    }, 3000); // Skift 3000 til den faktiske varighed af din animation
+});
+
 function add_reset_btn(key, dataplotter) {
 	const form_reset = document.createElement("form");
 	form_reset.id = `form-${key_without_spaces}`;
@@ -102,99 +146,19 @@ function check_status(bat_alarm, bat_state, PV_conn, EM_conn) {
             Battery_status = "," + bat_state
         }		
 	}
-    PV_Status               = PV_conn   == -1   ? "PVConnectionRefused" : null;
-    Energymeter_status      = EM_conn   == -1   ? "EMConnRefused"       : null;
+	/*if (PV_conn == -1){
+		PV_Status =  "ConnRefused"
+	}
+	else { // if (PV_conn == -2){
+		PV_Status = null
+	}
+	*/
+	PV_Status               = PV_conn   == -1   ? "ConnRefused" : null;
+    Energymeter_status      = EM_conn   == -1   ? "ConnRefused"       : null;
   
     return {Battery : Battery_status, EM : Energymeter_status, PV : PV_Status}
 }
 
-
-function add_datas(msg) {
-    const table = document.getElementById("tables"); // Replace with your actual table's tbody ID
-
-    // Iterate over each key in the msg object
-    for (let key in msg) {
-        key_without_spaces = key.replace(/\s+/g, "_"); // With spaces it will be hard for the js to find out which key is used.
-        const newRow = document.createElement("tr");
-
-        // Create new cells
-        const prio_td = document.createElement("td");
-        const site_td = document.createElement("td");
-        const nr_td = document.createElement("td");
-        const statud_td = document.createElement("td");
-        const power_td = document.createElement("td");
-        const soc_td = document.createElement("td");
-        const control_td = document.createElement("td");
-        const note_btn_td = document.createElement("td");
-        const signed_td = document.createElement("td");
-        const DASA_td = document.createElement("td");
-        const planning_td = document.createElement("td");
-        const reset_btn_td = document.createElement("td");
-
-        form_reset = add_reset_btn(key, key_without_spaces);
-        noteBtn = add_note_area(key, key_without_spaces, msg[key]["Note"]);
-
-        var status = check_status(msg[key]["Battery_Alarm_State"], msg[key]["Battery_state"], msg[key]["PV_connection_status"], msg[key]["Energy_meter_connection_status"]);
-        if (status.Battery_status == 'ComingSoon'){
-            statusOpacity = 0.2;
-        }else{
-            statusOpacity = 1;
-        }
-
-
-        Show_battery_status = status.Battery_status == null ?  "Battery: <b style='font-size:38px; color:#0fdc3c'; class='bi bi-check2'> </b>" : "<b style='font-size:25; color:" + status.Battery_color + "';> " + status.Battery_status + " <i style='font-size:14px; color:white; opacity:" + status.opacity + ";'>[" + msg[key]["Alarm_registred"] + "] </i>";
-
-        var showStatus = status.status == undefined ? "<b style='font-size:38px; color:#0fdc3c'; class='bi bi-check2'> </b>" : "<b style='font-size:25; color:" + status.statusColor + "';> " + status.status + " <i style='font-size:14px; color:white; opacity:" + status.opacity + ";'>[" + msg[key]["Alarm_registred"] + "] </i>";
-        
-        var smartFlow = msg[key]["Battery_control"] == "Smartflow" ? "<p style='color:white;' >" + msg[key]["Battery_control"] + " <i style='color:#37dc0f;' class='fa fa-leaf'></i>" + " </p>" : "<p style='color:white;'>" + msg[key]["Battery_control"] + "</p>";
-
-        var showPrioritet = msg[key]["Site_prioritet"] == 1 ? "<b style='color:red;'>&nbsp; [" +  msg[key]["Site_prioritet"] + "]</b>" : "<b style='color:white;'>&nbsp; [" +  (msg[key]["Site_prioritet"] || 9) + "]</b>";
-        
-        var showProjectNr = (msg[key]["Project_nr"] == undefined || msg[key]["Project_nr"] == null || msg[key]["Project_nr"] == "-") ? 99999 : msg[key]["Project_nr"];
-
-        newRow.classList.add("textClass");
-
-        nr_td.innerHTML = showProjectNr;
-        nr_td.style.textAlign = "right";
-        site_td.innerHTML = "&nbsp; " + key || "&nbsp; N/A ";
-        prio_td.innerHTML = showPrioritet;
-        statud_td.innerHTML = Show_battery_status;
-        power_td.innerHTML = msg[key]["Battery_ACPower"] || 0;
-        soc_td.innerHTML = msg[key]["Battery_State_of_Charge"] || 0;
-        control_td.innerHTML = smartFlow;
-        signed_td.innerHTML = (msg[key]["Signed_date"] || "N/A") + "<br>" + (msg[key]["Signed_time"] || "N/A");
-        DASA_td.innerHTML = (msg[key]["DA_nr"] || "") + " / " + (msg[key]["SA_nr"] || "");
-		prio_td.classList.add("prio_td"); // Tilføj denne linje i din add_data-funktion
-
-        nr_td.style.opacity = status.opacity;
-        site_td.style.opacity = status.opacity;
-        prio_td.style.opacity = status.opacity;
-        signed_td.style.opacity = status.opacity;
-        DASA_td.style.opacity = status.opacity;
-        planning_td.style.opacity = status.opacity;
-        control_td.style.opacity = status.opacity;
-        power_td.style.opacity = status.opacity;
-        soc_td.style.opacity = status.opacity;
-        reset_btn_td.style.opacity = status.opacity;
-
-        // Append the new row to the table
-        newRow.appendChild(prio_td);
-        newRow.appendChild(nr_td);
-        newRow.appendChild(site_td);
-        newRow.appendChild(statud_td);
-        newRow.appendChild(power_td);
-        newRow.appendChild(soc_td);
-        newRow.appendChild(control_td);
-        note_btn_td.appendChild(noteBtn);
-        newRow.appendChild(note_btn_td);
-        newRow.appendChild(signed_td);
-        newRow.appendChild(DASA_td);
-        reset_btn_td.appendChild(form_reset);
-        newRow.appendChild(reset_btn_td);
-
-        table.appendChild(newRow);
-    }
-}
 
 
 function sortTable(n) {
@@ -295,7 +259,7 @@ function add_data(msg) {
 
 		status = check_status(msg[key]["Battery_Alarm_State"], msg[key]["Battery_state"], msg[key]["PV_connection_status"], msg[key]["Energy_meter_connection_status"]);         
 		StatusColor = 'red';
-        
+    
        // console.log("Battery: ",status.Battery,  msg[key]["Battery_Alarm_State"], msg[key]["Battery_state"], msg[key]["PV_connection_status"], msg[key]["Energy_meter_connection_status"])
         if (status.Battery == 'ComingSoon') {
             showOpacity = 0.2;
@@ -305,31 +269,44 @@ function add_data(msg) {
         if (status.Battery == 'ReadyForStartup') {            
             StatusColor = 'yellow';
         }
+        
         icon_ = "<b style='font-size:30px; color:#0fdc3c'; class='bi bi-check2'> </b>";
 
 		if (status.Battery == null && status.PV == null && status.EM == null) {
 			showStatus = "<b style='font-size:38px; color:#0fdc3c'; class='bi bi-check2'> </b>";        
 		} else {			
-            showAlarm = "</b>";
+            showAlarm = "";
             if (msg[key]["Alarm_registred"]){
                 showAlarm = "<br><i style='color:white; font-size: 13px;'> Alarm registered: " + msg[key]["Alarm_registred"] + "</b> </i>";
     		}                     
-            console.log(StatusColor)
-			showStatus =    "<b style='font-size:15px; color:"+ StatusColor +";' > Battery: " + (status.Battery    == null ? "" : status.Battery)    + "</b>" +
-                            (status.EM == null ? "":  ("<br>EM:      <b style='font-size:15px; color:red;'> " + (status.EM         == null ? "" : status.EM )        + "</b>")) +
-                            (status.PV == null ? "" : ("<br>PV:      <b style='font-size:15px; color:red;'> " + (status.PV         == null ? "" : status.PV ) ))       +  showAlarm; 
-            console.log(showStatus)
+            
+            status.Battery = status.Battery ||null;       
+            Battery_Status_ 	= status.Battery	== null ?	""	:	("<b style='font-size:15px; color:red;'>Battery: "		+ status.Battery	+	"</b>") + "<br>"
+			EM_Status_			= status.EM			== null ?	""	:	("<b style='font-size:15px; color:red;'>EM:	"		+ status.EM 			+	"</b>") + "<br>"
+			PV_Status_			= status.PV			== null ?	""	:	("<b style='font-size:15px; color:red;'>PV: "		+ status.PV 			+	"</b>") + "<br>"
+			
+			
+			
+			showStatus = Battery_Status_ + EM_Status_ + PV_Status_
+			console.log("Battery_Status_: ", Battery_Status_)
+			console.log("EM_Status_: ", EM_Status_)
+			console.log("PV_Status_: ", PV_Status_)
+			/*showStatus =    ((status.Battery	== null ?	""	:	("<b style='font-size:15px; color:red;'>Battery: "		+ status.Battery	+ "</b><br>" )	+ 
+                            (status.EM		== null ?	""	:	("<br><b style='font-size:15px; color:red;'>EM:	"		+ status.EM 		+ "</b>")		+
+                            (status.PV		== null ?	""	:	("<br><b style='font-size:15px; color:red;'>PV: "		+ status.PV 		+ "</b>")		+  showAlarm);	 */
+            console.log("ShowStatus: ", showStatus);
             //"<b style='font-size:25; color:" + status.statusColor + "';> " + status.status + " <i style='font-size:14px; color:white; opacity:" + status.opacity + ";'>[" + msg[key]["Alarm_registred"] + "] </i>";// +"</b> <i style='font-size:15px> [" + msg[key]["Alarm_registred"] + "] </i>";
 		}
-		console.log("SHOW STATUS: ", showStatus)
+		
 		var smartFlow = null;
-		if (msg[key]["Battery_control"] == "Smartflow") {  			
-			smartFlow = "<p style='color:0fdc3c;' >" +  msg[key]["Battery_control"] +  " </p>";
+		//console.log(msg[key]["Battery_control"] == "Smartflow", msg[key]["Battery_control"])
+		if (msg[key]["Battery_control"] == "Smartflow") {			
+			smartFlow = "<p style='color:32f60f;'>"  +  msg[key]["Battery_control"] +  " </p>";
 		}			
-		else {            
+		else  {            
 			smartFlow = "<p style='color:white;'>" +  msg[key]["Battery_control"] + "</p>";    
         }
-		if (msg[key]["Battery_control"] == undefined){
+		if (msg[key]["Battery_control"] == undefined){		
 			smartFlow = "<p style='color:white;'></p>";    
 		}
 		
@@ -348,7 +325,7 @@ function add_data(msg) {
 		}
 
 		showProjectNr = null
-		console.log("Project_nr: ", msg[key]["Project_nr"])
+		
 		if (msg[key]["Project_nr"] == undefined || msg[key]["Project_nr"] == null || msg[key]["Project_nr"] == "-"){
 			showProjectNr = 99999
 		}else{

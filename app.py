@@ -64,6 +64,7 @@ class Visblue_main():
         self.data = {}
 
     def EM(self):
+        # 0 = OK, -1 = connRefused, -2 = Used, -3=Unknown
         EM_power = None
         EM_status = None
         if self.em_ip != None:
@@ -75,18 +76,21 @@ class Visblue_main():
                     EM_status = 0
                 else:
                     EM_status = -1
+            else:
+                EM_status = -2
         else:
-            EM_status = 0
+            EM_status = -3
 
         self.data['Energy_meter_connection_status'] = EM_status
         self.data['Energy_meter_power'] = EM_power
 
     def PV(self):
+        # 0 = OK, -1 = connRefused, -2 = Used, -3=Unknown
         PV_status = None
         PV_power = None
-        # print(self.pv_ip, self.site)
+        
         if self.pv_ip != None:
-            if self.pv_ip.lower() == 'dcc':
+            if self.pv_ip.lower() != 'dcc':
                # print("Here: ", self.pv_ip, self.site)
                 self.pv = PV_conn(self.site, self.pv_ip, self.pv_port,
                                   self.pv_unitid, self.pv_type)
@@ -96,9 +100,13 @@ class Visblue_main():
                 else:
                     PV_status = -1
             else:
-                PV_status = True
+                PV_status = -2
         else:
-            PV_status = 0
+            PV_status = -3
+
+            if re.search("solvang", self.site.lower()) or  re.search("løse svommehal", self.site.lower()):
+                PV_status = -3
+            
         self.data['PV_connection_status'] = PV_status
         self.data['PV_power'] = PV_power
 
@@ -184,7 +192,7 @@ class Visblue_main():
         'ProjectNr': self.project_nr,
     }
 
-        alarmStatus = "OK" if self.data.get('Battery_Alarm_State', 0) == 0 else self.data['Battery_Alarm_State']
+        alarmStatus = "OK" if self.data.get('Battery_Alarm_State', "OK") == 0 else self.data['Battery_Alarm_State']
         db_current_data = self.col.find_one(query)
 
         if db_current_data is None:
@@ -320,8 +328,8 @@ class Visblue_main():
 
     def run(self):
         self.VisblueBattery()
-        # self.EM()
-        # self.PV()
+        self.EM()
+        self.PV()
         if self.data['Battery_Alarm_State'] != 'ComingSoon':            
             self.update_database_error_log()
 
@@ -399,7 +407,7 @@ def process_collections():
             completed_results.append((site, datas))
 
             # Once we have 10 results, send them and wait for 5 seconds
-            if len(completed_results) ==1:
+            if len(completed_results) == 5:
                 # Send/Process the batch of 10 results
                 # print(f"Sending batch of 10: {completed_results[0]}")
                 # Here you can send the batch to your desired destination
@@ -407,13 +415,16 @@ def process_collections():
                 # Example: send_batch(completed_results)
 
                 # Wait for 5 seconds before continuing
-                socket.sleep(5121)
+                socket.sleep(1)
 
                 # Clear the completed results for the next batch
                 completed_results.clear()
 
         # If there are any remaining results less than 10 after all threads are done
         if completed_results:
+            socket.emit("table", dict(completed_results))
+            completed_results.clear()
+           # time.sleep(1000)
             pass
             # print(f"Sending final batch: {completed_results}")
             # socket.emit("table", dict(completed_results))

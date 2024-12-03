@@ -419,27 +419,65 @@
 			           display: none;
 			       }
 			       
-			  .newsfeedContainer{
-			  	
-			  				position: absolute;
-				text-align:center;
-				  height: 35px;
-				width: 100px;
-			background-color: black;
-				
-				right:50%;
-				z-index: 1}
-			
-			.newsfeed{
-	
-				font-size: 35px;
-			
-			
-				color:white;
-	
-				
-			}
-			       
+.newsfeedContainer {
+    position: fixed; /* Bruk fixed for at den skal være relativ til skjermen, ikke et spesifikt element */
+    top: 50%; /* Plasserer popupen vertikalt i midten */
+    left: 50%; /* Plasserer popupen horisontalt i midten */
+    transform: translate(-50%, -50%); /* Sentrerer popupen nøyaktig */
+    width: 300px;
+    height: 300px;
+    background-color: black;
+    color: white;
+    border-radius: 10px; /* Legger til avrundede hjørner */
+    z-index: 1000; /* Sørger for at popupen er foran andre elementer */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5); /* Skyggeeffekt for popupen */
+    display: none; /* Skjuler popupen som standard */
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    padding: 20px;
+}
+
+.newsfeed {
+    font-size: 24px;
+    margin-bottom: 20px; /* Legger til avstand under teksten */
+}
+
+.newsfeedBtn {
+    position: absolute;
+    top: 10px; /* Plasserer knappen øverst til høyre */
+    right: 10px;
+    background-color: red; /* Gir knappen en farge */
+    color: white;
+    border: none;
+    font-size: 20px;
+    padding: 5px 10px;
+    border-radius: 5px; /* Gjør knappen avrundet */
+    cursor: pointer;
+}
+
+.newsfeedBtn:hover {
+    background-color: darkred; /* Endrer fargen på knappen når musen er over */
+}
+
+/* Legger til en overgang for visning */
+.newsfeedContainer.show {
+    display: flex; /* Vist når 'show' klassen er lagt til */
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Fade-in animasjon */
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -60%); /* Begynner litt høyere opp */
+    }
+    100% {
+        opacity: 1;
+        transform: translate(-50%, -50%); /* Slutter i midten */
+    }
+}
+   
 		</style>
 
 		<title>Visblue Service Page</title>
@@ -448,8 +486,10 @@
 		<!--<div class="overlay" id="overlay">
         <div class="loader" id="loader"></div>
     </div>-->
-    <div class=newsfeedContainer>
-    <p id=newsfeed>Update: </p>
+ 
+    <div class="newsfeedContainer">
+        <p id="newsfeed">Update: This is a software update!</p>
+        <button class="newsfeedBtn" id="closeNews" onclick="rmNewsBoks()"> X </button>
     </div>
     
 		
