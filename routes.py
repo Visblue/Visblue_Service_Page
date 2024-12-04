@@ -14,6 +14,7 @@ import asyncio
 main_blueprint = Blueprint('main', __name__)
 client = pymongo.MongoClient('mongodb://172.20.33.151:27018/') 
 db = client["ServicePage_Log"]
+dbCustomer = client["Customer_info"]
 
 
 
@@ -114,6 +115,7 @@ def fejloversigts():
         latest_projectNr = data.get('ProjectNr')
         latest_error = data.get('Battery_status');
         lateste_Time = data.get('Time')
+        lateste_Smartflow = data.get('Smartflow')
        
        # if data.get('Battery_status') == 'OK':
 	        #  continue       
@@ -124,6 +126,7 @@ def fejloversigts():
                 'ProjectNr': Projekt_Nr.iloc[1],
                 'Prioritet': prioritet,
                 "Battery_status":  latest_error,  # ,	 "N/A"),
+                "Smartflow" : lateste_Smartflow,
                 "Time":  lateste_Time  # , "N/A")
             }
             all_data.append(site_info)
@@ -147,12 +150,14 @@ async def reset_battery():
     found = False
     # Search for the site in the database
     for collection_name in db_sites.list_collection_names():
-        if site.lower() == collection_name.lower():
+        #print(site.lower, collection_name.lower())
+        if re.search(str(site.lower())[0:5], collection_name.lower()):
+            
             data = db_sites[collection_name].find_one()
             if not data:
                 return jsonify({"error": "Site data not found"}), 404
                 
-            data = data[site]
+            data = data[collection_name]
             IP = data.get('Battery_ip')
             port = data.get('Battery_port', 502)  # Default port 502 for Modbus
             print(data, IP , port, "\n\n")
@@ -201,7 +206,7 @@ def fejloversigtss():
     # Skift arbejdssti, hvis nødvendigt
     if os.getcwd() != sti:
         os.chdir(sti)
-
+    
     # Indlæs data fra CSV-filer
     datas = None
     for file_name in os.listdir():
@@ -220,13 +225,14 @@ def fejloversigtss():
     # Gennemgå alle MongoDB-samlinger
     for collection_name in db.list_collection_names():
         data = db[collection_name].find_one(sort=[("time", pymongo.DESCENDING)])
-
+	
         if not data:
             continue  # Spring over, hvis ingen dokumenter findes i samlingen
 
         latest_projectNr = data.get('ProjectNr')
         latest_error = data.get('Battery_status')
         latest_time = data.get('Time')
+        latest_smartflow = data.get('Smartflow')
 
         # Gennemgå alle projekter i datas
         for i in range(len(Projekt_Nr)):
@@ -236,6 +242,7 @@ def fejloversigtss():
                     "ProjectNr": Projekt_Nr.iloc[i],
                     "Prioritet": Projekt_prioritet.iloc[i],
                     "Battery_status": latest_error,
+                    "Smartflow": latest_smartflow,
                     "Time": latest_time
                 }
                 all_data.append(site_info)

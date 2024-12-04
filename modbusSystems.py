@@ -3,7 +3,13 @@ from pymodbus.payload import BinaryPayloadDecoder
 from pymodbus.constants import Endian
 from datetime import datetime 
 import re 
+import warnings
 
+# Suppress all warnings
+import warnings
+
+# Suppress all warnings
+warnings.filterwarnings("ignore")
 
 
 a = "detechnoem, abc"
@@ -93,27 +99,27 @@ class MODBUS(object):
             self.client.close()
             return True
         except Exception as e:
-            print(f"Failed : Connection {self.site}")
+            #print(f"Failed : Connection {self.site}")
             self.client.close()        
             return False             
 
     def siemens_ACPower(self):
-            return decode_float(self.client.read_holding_registers(65,2,self.UNIT_ID).registers)
+            return int(decode_float(self.client.read_holding_registers(65,2,self.UNIT_ID).registers))
     
     def carlo_ACPower(self): 
-        return decode_int32(self.client.read_holding_registers(40,3,self.UNIT_ID).registers)
+        return int(decode_int32(self.client.read_holding_registers(40,3,self.UNIT_ID).registers))
         
     def server_ACPower(self): 
-        return decode_int32(self.client.read_holding_registers(19026,3,self.UNIT_ID).registers)
+        return int(decode_int32(self.client.read_holding_registers(19026,3,self.UNIT_ID).registers))
 
     def fronius_eco_ACPower(self):
-        return decode_int16(self.client.read_holding_registers(40083,1,self.UNIT_ID).registers)
+        return int(decode_int16(self.client.read_holding_registers(40083,1,self.UNIT_ID).registers))
     
     def fronius_symo_ACPower(self):
-        return decode_float(self.client.read_holding_registers(40095,2,self.UNIT_ID).registers)
+        return int(decode_float(self.client.read_holding_registers(40095,2,self.UNIT_ID).registers))
     
     def smartlogger_ACPower(self):
-        return decode_float(self.client.read_holding_registers(20,2,self.UNIT_ID).registers)
+        return int(decode_float(self.client.read_holding_registers(20,2,self.UNIT_ID).registers))
 
 class EnergyMeter_conn(MODBUS):
     def __init__(self, site,  ip_address, port, unit_id, system_info):   
@@ -151,7 +157,7 @@ class PV_conn(MODBUS):
     
     def pv_read_power(self):
         try:
-            print("PV systeminfo:", self.system_info)
+            #print("PV systeminfo:", self.system_info)
             self.power = None
             if self.system_info == "siemens":
                 self.power =  self.siemens_ACPower()
@@ -228,7 +234,24 @@ class Battery_conn(MODBUS):
             return res
         return 0
         #return self.battery_data[1]
-
+    def check_smartflow(self):
+        if self.battery_read_control_reg() == 1:#and datetime.now().strftime("%M") % 1 == 0:# datetime.now().replace(minute=5).strftime("%M"):  
+            if self.battery_read_ACPower() > 0:
+                if self.battery_read_charge_setpoint() != self.battery_read_actual_charge_setpoint():
+                	#if self.
+                    return -1
+                else:
+                    return 0
+            else:
+                if self.battery_read_discharge_setpoint() != self.battery_read_actual_discharge_setpoint() and self.battery_read_soc() > 0:
+                    if self.battery_read_discharge_setpoint() - self.battery_read_actual_discharge_setpoint() < self.battery_read_discharge_setpoint()*0.4:
+                        
+                        return 0
+                        
+                    return -1
+                else:
+                    return 0
+        
     def battery_read_temperature(self):
         return self.battery_data[5]
 
@@ -237,7 +260,7 @@ class Battery_conn(MODBUS):
     def battery_current_control(self):        
         control_modes = {0: 'EM Control', 1: 'Smartflow', 2: 'Auto'} 
         if re.search('vacha', self.site.lower()) or re.search('texel', self.site.lower()) or re.search('varensdorf', self.site.lower())  or re.search('bryte', self.site.lower()):
-            print("EXternal ", self.site) 
+            #print("EXternal ", self.site) 
             return 'External Control'
         return control_modes.get(int(self.battery_read_control_reg()), 'Unknown control')  
     

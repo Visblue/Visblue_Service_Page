@@ -424,8 +424,8 @@
     top: 50%; /* Plasserer popupen vertikalt i midten */
     left: 50%; /* Plasserer popupen horisontalt i midten */
     transform: translate(-50%, -50%); /* Sentrerer popupen nøyaktig */
-    width: 300px;
-    height: 300px;
+    width: 500px;
+    height: 700px;
     background-color: black;
     color: white;
     border-radius: 10px; /* Legger til avrundede hjørner */
@@ -439,7 +439,7 @@
 }
 
 .newsfeed {
-    font-size: 24px;
+    font-size: 35px;
     margin-bottom: 20px; /* Legger til avstand under teksten */
 }
 
@@ -460,6 +460,30 @@
     background-color: darkred; /* Endrer fargen på knappen når musen er over */
 }
 
+
+
+.newsfeedtodo{
+	 position: absolute;
+    top: 72%; /* Plasserer knappen øverst til høyre */
+   }
+
+.newsfeedBtn2 {
+    position: absolute;
+    top: 35px; /* Plasserer knappen øverst til høyre */
+    right:-295px ;
+    background-color: red; /* Gir knappen en farge */
+    color: black;
+    border: none;
+    font-size: 20px;
+    padding: 5px 10px;
+    border-radius: 5px; /* Gjør knappen avrundet */
+    cursor: pointer;
+}
+
+.newsfeedBtn2:hover {
+    background-color: darkred; /* Endrer fargen på knappen når musen er over */
+}
+
 /* Legger til en overgang for visning */
 .newsfeedContainer.show {
     display: flex; /* Vist når 'show' klassen er lagt til */
@@ -477,6 +501,25 @@
         transform: translate(-50%, -50%); /* Slutter i midten */
     }
 }
+.status{
+    position: fixed; /* Bruk fixed for at den skal være relativ til skjermen, ikke et spesifikt element */
+     top:10px;/* Plasserer popupen vertikalt i midten */
+    left: 50%; /* Plasserer popupen horisontalt i midten */
+    transform: translate(-50%, -50%); /* Sentrerer popupen nøyaktig */
+    width: 900px;
+    height: 50px;
+    text-align:center;
+    background-color: black;
+    color: white;
+    border-radius: 10px; /* Legger til avrundede hjørner */
+    z-index: 1000; /* Sørger for at popupen er foran andre elementer */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5); /* Skyggeeffekt for popupen */
+    display: none; /* Skjuler popupen som standard */
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    padding: 20px;
+	
    
 		</style>
 
@@ -486,13 +529,33 @@
 		<!--<div class="overlay" id="overlay">
         <div class="loader" id="loader"></div>
     </div>-->
- 
-    <div class="newsfeedContainer">
+ <div class="newsfeedContainer">
+    <p id="newsfeed">Update: This is a software update!</p>
+    <p id="Todos">Todo:</p>
+    <button class="newsfeedBtn" id="closeNews" onclick="rmNewsBoks(event)"> X </button>
+    <form class="newsfeedtodo" onsubmit="addTodo(event)">
+        <input type="text" style="color:black; position:absolute;  right:-340px; "id="todo">
+        <input type="submit" class="newsfeedBtn2" value="Add todo">
+    </form>
+</div>
+   <!-- <div class="newsfeedContainer">
         <p id="newsfeed">Update: This is a software update!</p>
-        <button class="newsfeedBtn" id="closeNews" onclick="rmNewsBoks()"> X </button>
-    </div>
+        <button class="newsfeedBtn" id="closeNews" onsubmit="rmNewsBoks(event)"> X </button>
+        <form class = "newsfeedtodo" onsubmit="addTodo()" >
+			  Add fault: <input type="text" id="todo">
+	  <input type="submit" class="newsfeedBtn2">
+	</form>-->
+  
     
+		<div class ="status">
+			Total Systems: <b id="TotalSystems"></b> &nbsp; &nbsp; &nbsp; 
+			Online Systems:  <b id="TotalOnline"></b> &nbsp; &nbsp; &nbsp;
+			Offline Systems:  <b id="TotalOffline"></b> &nbsp; &nbsp; &nbsp;
+			Bugs:  <b id="TotalError"></b> &nbsp; &nbsp; &nbsp;
+			Bug-Free Systems:  <b id="TotalNoneError"></b> &nbsp; &nbsp; &nbsp;
+			
 		
+		</div>
 		<div class="content" id="content">
 			<table class="tables" id="tables">
 				<thead>
@@ -501,7 +564,7 @@
 						<th onclick="sortTable(1)" style="text-align: right">Nr. &nbsp; &nbsp; &nbsp;</th>
 						<th onclick="sortTable(2)" style="text-align: left">Site</th>
 						<!--<th onclick="sortTable(2)" style="text-align: center; font-weight: bold;">Location</th>-->
-						<th onclick="sortTable(3)">Status</th>
+						<th onclick="sortTable(3)">Status </th>
 						<th onclick="sortTable(4)">Power</th>
 						<th onclick="sortTable(5)">SOC</th>
 						<!--<th onclick="sortTable(6)" >DKK/kW</th>-->

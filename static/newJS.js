@@ -5,18 +5,29 @@ socket.on("connect", function (msg, chargeColor) {});
 
 // newsfeed
 function fetchData() {
+
 	$.getJSON('/newsfeed', function (response) {
 		data = response;
+		data = data.split(",")
+		//let splitData = data.split(/\s+/); // Split by spaces, tabs, newlines, etc.
+
+// Join the split data with <br> to create line breaks in HTML
+		data = data.join("<br>");
 		document.getElementById("newsfeed").innerHTML = data;		
 
 	});
+
+
 }
 
 // Funksjon for å vise popupen
 function showPopup() {
     var popup = document.querySelector('.newsfeedContainer');
     popup.classList.add('show'); // Legger til 'show' for å vise popupen
+    var popups = document.querySelector('.status');
+    popups.classList.add('show'); // Legger til 'show
 }
+
 
 // Funksjon for å skjule popupen (på knappeklikk)
 function rmNewsBoks() {
@@ -24,11 +35,26 @@ function rmNewsBoks() {
     popup.classList.remove('show'); // Fjerner 'show' for å skjule popupen
 }
 
+function addTodo(event)
+{
+
+	event.preventDefault();
+	 const todoInput = document.getElementById('todo').value;
+        
+        // You can add logic here to handle the todo item (e.g., display it, save it, etc.)
+    console.log("Todo added:", todoInput);
+        
+        // Optionally clear the input field after adding the todo
+    document.getElementById('todo').value = '';
+
+	socket.emit("todo", { todo : todoInput });
+
+}
+
 // For å vise popupen etter en viss tid (f.eks. etter 2 sekunder)
-setTimeout(showPopup, 2000);
+setTimeout(showPopup, 500);
 
 fetchData()
-setInterval(fetchData, 9000);
 
 
 
@@ -84,7 +110,7 @@ function add_reset_btn(key, dataplotter) {
 }
 
 function add_dataplotter(key, dataplotter) {
-	console.log("dataplotter: ", dataplotter);
+	
 	const dataplotterLink = document.createElement("a");
 	dataplotterLink.href = dataplotter;
 	dataplotterLink.target = "_blank";
@@ -115,6 +141,7 @@ function add_note_area(key, key_without_spaces, noteData) {
 	noteBtn.name = key;
 
 	noteBtn.style.resize = "none";
+	noteBtn.style.fontSize  = "15px";
 	noteBtn.textAlign = "center";
 	noteBtn.textContent = noteData;
 
@@ -124,11 +151,11 @@ function add_note_area(key, key_without_spaces, noteData) {
 	return noteBtn;
 }
 function save_note(key, value) {
-	console.log(key, value);
+	
 	socket.emit("note", { key: key, value: value });
 }
 
-function check_status(bat_alarm, bat_state, PV_conn, EM_conn) {	
+function check_status(bat_alarm, bat_state,bat_smartflow, bat_control, PV_conn, EM_conn) {	
    // console.log("BAT: " + bat_alarm, bat_state);
 	var Battery_status  = null	
 	var Energymeter_status = null		
@@ -146,6 +173,20 @@ function check_status(bat_alarm, bat_state, PV_conn, EM_conn) {
             Battery_status = "," + bat_state
         }		
 	}
+	
+	/*if (bat_control == "Smartflow"){
+		if (bat_smartflow != 0)
+		{
+	        if (Battery_status == null) {
+			Battery_status  = "SmartflowError";
+			
+	        }
+	        else{
+	            Battery_status = ",SmartflowError" 
+	        }
+		}
+	}*/
+
 	/*if (PV_conn == -1){
 		PV_Status =  "ConnRefused"
 	}
@@ -242,9 +283,17 @@ function add_data(msg) {
 		//const dataplotter_td = document.createElement("td");
 
 		//	dataplotters = add_dataplotter(key, msg[key]["Dataplotter"]);
-
+		if (key == 'SystemStat'){
+			 document.getElementById('TotalSystems').innerHTML = msg[key]['TotalSystems']
+			 document.getElementById('TotalOnline').innerHTML = msg[key]['TotalOnline'] 
+			 document.getElementById('TotalOffline').innerHTML = msg[key]['TotalOffline'] 
+			 document.getElementById('TotalError').innerHTML = msg[key]['TotalError'] 
+			 document.getElementById('TotalNoneError').innerHTML = msg[key]['TotalNoneError'] 
+		
+			 
+		}
 		form_reset = add_reset_btn(key, key_without_spaces);
-
+		
 		//reset_btn_td.style.width = "20%";
 		note_btn_td.style.width = "10%";
 		noteBtn = add_note_area(key, key_without_spaces, msg[key]["Note"]);
@@ -254,10 +303,27 @@ function add_data(msg) {
         var showOpacity = 1;
        
 
+		try{
+				data = msg[key]['Todo'];
+
+			let output = "";
+			counter = 0
+			data.forEach(item => {
+				counter += 1
+			    output += counter + ": " + item + "<br>";  // Append each item followed by a <br> tag
+			});
+			document.getElementById("Todos").innerHTML = output;
+		//let splitData = data.split(/\s+/); // Split by spaces, tabs, newlines, etc.
+		}
+		catch(error) {
+		
+		
+			
+		}
+// Join the split data with <br> to create line breaks in HTML
 
 
-
-		status = check_status(msg[key]["Battery_Alarm_State"], msg[key]["Battery_state"], msg[key]["PV_connection_status"], msg[key]["Energy_meter_connection_status"]);         
+		status = check_status(msg[key]["Battery_Alarm_State"], msg[key]["Battery_state"],msg[key]["Battery_Smartflow"], msg[key]["Battery_control"], msg[key]["PV_connection_status"], msg[key]["Energy_meter_connection_status"]);         
 		StatusColor = 'red';
     
        // console.log("Battery: ",status.Battery,  msg[key]["Battery_Alarm_State"], msg[key]["Battery_state"], msg[key]["PV_connection_status"], msg[key]["Energy_meter_connection_status"])
@@ -266,9 +332,7 @@ function add_data(msg) {
             StatusColor = 'grey';
         }
         
-        if (status.Battery == 'ReadyForStartup') {            
-            StatusColor = 'yellow';
-        }
+        
         
         icon_ = "<b style='font-size:30px; color:#0fdc3c'; class='bi bi-check2'> </b>";
 
@@ -279,23 +343,22 @@ function add_data(msg) {
             if (msg[key]["Alarm_registred"]){
                 showAlarm = "<br><i style='color:white; font-size: 13px;'> Alarm registered: " + msg[key]["Alarm_registred"] + "</b> </i>";
     		}                     
+            if (status.Battery == 'ComingSoon') {            
             
+              showStatus 	= status.Battery	== null ?	""	:	("<b style='font-size:15px; color:grey;'>Battery: "		+ status.Battery	+	"</b>") + "<br>"
+    		 }else {
             status.Battery = status.Battery ||null;       
             Battery_Status_ 	= status.Battery	== null ?	""	:	("<b style='font-size:15px; color:red;'>Battery: "		+ status.Battery	+	"</b>") + "<br>"
 			EM_Status_			= status.EM			== null ?	""	:	("<b style='font-size:15px; color:red;'>EM:	"		+ status.EM 			+	"</b>") + "<br>"
 			PV_Status_			= status.PV			== null ?	""	:	("<b style='font-size:15px; color:red;'>PV: "		+ status.PV 			+	"</b>") + "<br>"
-			
-			
-			
+						
 			showStatus = Battery_Status_ + EM_Status_ + PV_Status_
-			console.log("Battery_Status_: ", Battery_Status_)
-			console.log("EM_Status_: ", EM_Status_)
-			console.log("PV_Status_: ", PV_Status_)
-			/*showStatus =    ((status.Battery	== null ?	""	:	("<b style='font-size:15px; color:red;'>Battery: "		+ status.Battery	+ "</b><br>" )	+ 
-                            (status.EM		== null ?	""	:	("<br><b style='font-size:15px; color:red;'>EM:	"		+ status.EM 		+ "</b>")		+
-                            (status.PV		== null ?	""	:	("<br><b style='font-size:15px; color:red;'>PV: "		+ status.PV 		+ "</b>")		+  showAlarm);	 */
-            console.log("ShowStatus: ", showStatus);
-            //"<b style='font-size:25; color:" + status.statusColor + "';> " + status.status + " <i style='font-size:14px; color:white; opacity:" + status.opacity + ";'>[" + msg[key]["Alarm_registred"] + "] </i>";// +"</b> <i style='font-size:15px> [" + msg[key]["Alarm_registred"] + "] </i>";
+    	
+			//console.log("Battery_Status_: ", Battery_Status_)
+			//console.log("EM_Status_: ", EM_Status_)
+			//console.log("PV_Status_: ", PV_Status_)
+			
+		}
 		}
 		
 		var smartFlow = null;
@@ -376,7 +439,7 @@ function add_data(msg) {
 		power_td.style.opacity      = showOpacity; // Set the opacity of the cell to 1 for visibility
 		soc_td.style.opacity        = showOpacity; // Set the opacity of the cell to 1 for visibility
 		reset_btn_td.style.opacity  = showOpacity; //
-        note_btn_td.style.opacity = showOpacity; // Set the opacity of the
+        note_btn_td.style.opacity = 1; // Set the opacity of the
         statud_td.style.opacity = showOpacity; // Set the opacity of the
 		newRow.id = `row-${key_without_spaces}`;
 		site_td.id = `site_td-${key_without_spaces}`;
@@ -439,9 +502,15 @@ function add_data(msg) {
 
 
 
+
 socket.on("table", function (msg) {
-	console.log("Table data received: ", msg);
+	console.log(msg)
+	//console.log("Table data received: ", msg);
 	// Add the received data to the table
-	add_data(msg);
+try{
+		add_data(msg);
+}catch(error){
+	console.log("ERROR: ", error)}
 	
 });
+
