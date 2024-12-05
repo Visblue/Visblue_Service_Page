@@ -223,14 +223,18 @@ class Battery_conn(MODBUS):
     def battery_read_alarm_state(self):
         if self.battery_data[1] > 0:
             res = convertAlarmCode(self.battery_data[1])
-            if re.search("se Svømmehal", self.site) and re.search('detectnoem', res.lower()):
-                res = res.replace('DetectNoEM,', "")
-                if len(res) <= 0:
-                    res = 0
-            if re.search("e-storage", self.site.lower()) and re.search('detectnoem', res.lower()):
-                res = res.replace('DetectNoEM,', "")
-                if len(res) <= 0:
-                    res = 0
+            if res.lower() == 'detectnoem':
+                if re.search("væreløse Svømmehal", self.site):# and re.search('detectnoem', res.lower()):
+                    res = res.replace('DetectNoEM,', "")
+                    res = res.replace('DetectNoEM', "")
+                    if len(res) <= 0:
+                        res = 0
+                if re.search("e-storage", self.site.lower()):# and re.search('detectnoem', res.lower()):
+                    res = res.replace('DetectNoEM,', "")
+                    res = res.replace('DetectNoEM', "")
+                    if len(res) <= 0:
+                        res = 0
+         
             return res
         return 0
         #return self.battery_data[1]

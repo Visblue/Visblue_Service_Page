@@ -11,11 +11,12 @@ def uint16(regs):
 
 def int32(regs):
     return BinaryPayloadDecoder.fromRegisters(regs,  wordorder=Endian.BIG, byteorder=Endian.BIG).decode_32bit_float()
-c = ModbusTcpClient("192.168.80.3")
-#print(int32(c.read_holding_registers(40154,2,1).registers))
+c = ModbusTcpClient("172.20.33.151", port=555)
+
+print(int32(c.read_holding_registers(19026,2,1).registers))
 #print(int32(c.read_holding_registers(40093,2,2).registers))
-#c.close()
-#quit()
+c.close()
+quit()
 #a_1s = decode(c.read_holding_registers(40052,16,1).registers)
 #a_1s = str(a_1s).replace("b'", "").split("\\")[0]
 #print("-->: ", a_1s)

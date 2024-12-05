@@ -42,7 +42,7 @@ systemOfflineCounter = 0
 
 systemErrorCounter = 0
 systemNoneErrorCounter = 0
-CounterRefreshRate = 10
+CounterRefreshRate = 3
 #systemCriticalErrorCounter = None
 
 TODO = False
@@ -152,11 +152,15 @@ class Visblue_main():
         return False
 
     def get_battery_control(self):
+        global smartFlowCounter
         try:
             control_modes = {0: 'EM Control', 1: 'Smartflow', 2: 'Auto'}
             if re.search('vacha', self.site.lower()) or re.search('texel', self.site.lower()) or re.search('varensdorf', self.site.lower()) or re.search('bryte', self.site.lower()):
                 return 'External Control'
-            return control_modes.get(int(self.battery.battery_read_control_reg()), 'Unknown control')
+            res =  control_modes.get(int(self.battery.battery_read_control_reg()), 'Unknown control')
+            if res == 'Smartflow':
+                smartFlowCounter += 1
+            return res
         except Exception as e:
             return "unknown"
     def get_battery_data(self):
@@ -256,7 +260,13 @@ class Visblue_main():
                 }
                 self.col.update_one(query, update_data)
                 return
-
+            """ if re.search('offline', existing_status.lower()):
+                data_to_update = {
+                "Kunde": self.site,
+                "Battery_status": alarmStatus,
+                }
+                self.col.update_one(query, update_data)
+                return"""
             if alarmStatus == 0 or re.search("ok", alarmStatus.lower()) or re.search('ok', existing_status.lower()):
                 # Sæt status til OK
              #   print("update: ", self.site, self.data.get('Battery_status'), existing_status)
@@ -373,7 +383,7 @@ def process_collection(i, TotalData):
 
 ShowStatus = 10
 def process_collections():
-    global totalSystems, systemErrorCounter, systemOnlineCounter, systemOfflineCounter, systemNoneErrorCounter,CounterRefreshRate
+    global totalSystems, systemErrorCounter, systemOnlineCounter, systemOfflineCounter, systemNoneErrorCounter,CounterRefreshRate, smartFlowCounter
     global OnlyOnce
     # Initialize a manager to handle shared data
     TotalData = {}
@@ -407,8 +417,8 @@ def process_collections():
            # break
             # Once we have 5 results, send them and wait
             if len(completed_results) >= 5:
-                if CounterRefreshRate == 10:
-                    completed_results.append(("SystemStat", {'TotalSystems' : totalSystems, "TotalError" : systemErrorCounter, "TotalNoneError" :systemNoneErrorCounter, "TotalOnline" : systemOnlineCounter, "TotalOffline" : systemOfflineCounter,  }))
+                if CounterRefreshRate >= 3:
+                    completed_results.append(("SystemStat", {'TotalSystems' : totalSystems, "TotalError" : systemErrorCounter, "TotalNoneError" :systemNoneErrorCounter, "TotalOnline" : systemOnlineCounter, "TotalOffline" : systemOfflineCounter, "TotalSmartflow" : smartFlowCounter  }))
                 socket.emit("table", dict(completed_results))
                 completed_results.clear()
 
@@ -427,7 +437,7 @@ def process_collections():
 
 
 def background_threads():
-    global systemOnlineCounter, systemOfflineCounter,systemErrorCounter, systemNoneErrorCounter, totalSystems, CounterRefreshRate
+    global systemOnlineCounter, systemOfflineCounter,systemErrorCounter, systemNoneErrorCounter, totalSystems,smartFlowCounter, CounterRefreshRate
     while True:
         try:
             start = time.time()
@@ -435,119 +445,23 @@ def background_threads():
             a = process_collections()  # Process collections
             end = time.time()
             print("TIME: ", end - start)
-            print("Systems: " , systemOnlineCounter, systemOfflineCounter, systemErrorCounter , "\n")
+            #print("Systems: " , systemOnlineCounter, systemOfflineCounter, systemErrorCounter , "\n")
             
             time.sleep(5)  # Delay between background task executions
-            if CounterRefreshRate == 0:
+            if CounterRefreshRate <= 0:
                 systemOnlineCounter = 0
                 systemOfflineCounter= 0
                 systemErrorCounter = 0
                 systemNoneErrorCounter = 0
                 totalSystems = 0
-                CounterRefreshRate = 10
-            CounterRefreshRate +=1
+                CounterRefreshRate = 4
+                smartFlowCounter = 0
+            CounterRefreshRate -=1
         except Exception as e:
             print(f"Error in background thread: {e}")
             time.sleep(5)  # Wait before retrying in case of failure
 
 
-# Function to handle the processing for each collection
-"""
-def process_collection(i,  TotalData):
-
-    site, data = get_info(i)
-    datas = dict(data, **lookup_db_for_notes(i))
-
-# Thread-safe update of the shared dictionary
-    with TotalData_lock:
-        TotalData[site] = datas
-
-    # Add a small delay (e.g., 10 milliseconds) after each processing
-    time.sleep(1) #Delay for 10 milliseconds
-
-    return site, datas  # Return the site and data for sending once done
-
-# Function to initialize threading
-
-
-def process_collections():
-    global OnlyOnce
-    # Initialize a manager to handle shared data
-    TotalData = {}
-    # Lock to ensure thread-safe access to TotalData
-    global TotalData_lock
-    TotalData_lock = threading.Lock()
-
-    # Create a partial function to pass `db` and `TotalData` to the worker function
-    process_func = partial(process_collection, TotalData=TotalData)
-
-    # Get the collection names from the database
-    collection_names = db_customer_info.list_collection_names()
-
-    # Use ThreadPoolExecutor to handle the threads
-    with ThreadPoolExecutor(max_workers = 5) as executor:  # Max workers set to 10
-        # Submit each collection to be processed in a separate thread
-        futures = [executor.submit(process_func, name)
-                   for name in collection_names]
-
-        # To collect completed results
-        completed_results = []
-
-        # Process results as they come in (as each thread completes)
-        for future in as_completed(futures):
-            site, datas = future.result()  # Get the result of the completed thread
-
-            # Append result to completed_results
-            completed_results.append((site, datas))
-
-            # Once we have 10 results, send them and wait for 5 seconds
-            if len(completed_results) == 5:
-            	
-                
-                
-                # Send/Process the batch of 10 results
-                # print(f"Sending batch of 10: {completed_results[0]}")
-                #print("BEFORE SENT: ", completed_results)
-                # Here you can send the batch to your desired destination
-                socket.emit("table", dict(completed_results))
-                completed_results.clear()
-              
-                # Example: send_batch(completed_results)
-
-                # Wait for 5 seconds before continuing
-                socket.sleep(0.1)
-
-                # Clear the completed results for the next batch
-                completed_results.clear()
-
-        # If there are any remaining results less than 10 after all threads are done
-        if completed_results:
-            
-            #print("completed_results: ", completed_results)
-            socket.emit("table", dict(completed_results))
-            completed_results.clear()
-            #time.sleep(10)
-            completed_results.clear()
-            OnlyOnce = False
-            
-            
-            # print(f"Sending final batch: {completed_results}")
-            # socket.emit("table", dict(completed_results))
-            # Example: send_batch(completed_results)
-
-    # Return the shared TotalData dictionary after processing is done
-    return TotalData
-
-def background_threads():
-    while True:
-        start = time.time()
-        a = process_collections()
-        #print(a)
-        end = time.time()
-        print("TIME: ", end-start)
-        time.sleep
-
-"""
 @socket.on('note')
 def save_note(msg):
     # db = visblueDB['service_page_notes']
